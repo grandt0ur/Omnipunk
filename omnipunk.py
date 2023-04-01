@@ -17,7 +17,21 @@ intents.message_content = True
 bot = commands.Bot(command_prefix=commands.when_mentioned_or("."),
                    intents=intents)
 
+
+async def timeout_user(*, user_id: int, guild_id: int, until):
+  headers = {"Authorization": f"Bot {bot.http.token}"}
+  url = f"https://discord.com/api/v9/guilds/{guild_id}/members/{user_id}"
+  timeout = (datetime.datetime.utcnow() +
+             datetime.timedelta(minutes=until)).isoformat()
+  json = {'communication_disabled_until': timeout}
+  async with bot.session.patch(url, json=json, headers=headers) as session:
+    if session.status in range(200, 299):
+      return True
+    return False
+
+
 bot.remove_command('help')
+
 
 @bot.event
 async def on_ready():
@@ -28,6 +42,7 @@ async def on_ready():
     name=
     f'{len(bot.guilds)} servers | {len(bot.users)} users | Type ?help or tag me with help for commands'
   ))
+
 
 @bot.command()
 async def gotcha(ctx):
@@ -47,14 +62,23 @@ async def help(ctx):
   await ctx.send('Currently Working on this')
 
 
-
 @bot.command()
-async def clr(ctx , num : int = 10):
+async def clr(ctx, num: int = 10):
   if num > 500 or num < 0:
     await ctx.send(f"**❌ Invalid Amount Maximum 500**")
   else:
-    await ctx.channel.purge(limit = num)
+    await ctx.channel.purge(limit=num)
     await ctx.send(f"**Sucsses Delete `{num}` message**")
 
 
-bot.run(my_secret)
+@bot.command()
+async def timeout(ctx: commands.Context, member: discord.Member, until: int):
+  handshake = await timeout_user(user_id=member.id,
+                                 guild_id=ctx.guild.id,
+                                 until=until)
+  if handshake:
+    return await ctx.send(f"Successfully timed out user for {until} minutes.")
+  await ctx.send("Something went wrong")
+
+
+bot.run(MTA5MTc3NTM4NzI0OTQyMjU0OA.Gls_CG.cFFV4WwXP8v1t1pjSM8CY_P9Gez0_7eYP59-Vg)
