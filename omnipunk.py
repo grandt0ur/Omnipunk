@@ -205,7 +205,7 @@ async def mute(ctx, member: discord.Member, time : int, *, reason=None):
     embed.add_field(name="Actual Mute Duration :", value=f"{time*60} Minutes", inline=False)
     embed.add_field(name="reason:", value=reason, inline=False)
     embed.set_footer(text="Bot Coded by fate")
-    await bot.get_channel(1073380690705522729).send(embed=embed)
+    await bot.get_channel(1086126239619751986).send(embed=embed)
     await member.add_roles(mutedRole, reason=reason)
     await member.send(f" you have been muted from: {guild.name} {ctx.message. author} for {time} hour(s)\n reason: {reason}. If this mute goes over 1day contact kismet#0005")
     await ctx.message.delete()
