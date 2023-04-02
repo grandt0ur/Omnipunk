@@ -120,7 +120,7 @@ async def unmute(ctx, member: discord.Member):
         await ctx.send(f"{member.mention} was never even muted, goofy!!!1")
 @bot.command()
 
-async def announce(self, ctx):
+async def announcement(ctx):
 
     # Find a channel from the guilds `text channels` (Rather then voice channels)
 
