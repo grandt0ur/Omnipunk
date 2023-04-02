@@ -30,6 +30,6 @@ but is also reflective of all current commands unless this line is edited to say
 
 Useful Links
 ------------
-[ADD BOT TO YOUR SERVER](https://discord.com/api/oauth2/authorize?client_id=1091775387249422548&permissions=8&scope=bot)</br>
+[ADD BOT TO YOUR SERVER]()</br>
 [Pycord Documentation](https://docs.pycord.dev/en/master/index.html)
 `NeoPunkFM Official Discord Server <https://neopunkfm.com/discord>`
