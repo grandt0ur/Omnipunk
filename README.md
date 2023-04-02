@@ -22,6 +22,10 @@ warn/w - This gives the user a warning</br>
 warns/ws - This gives the number, reasons, and mod who issued a specific warn</br>
 snipe/s - This snipes the users last message that was deleted</br>
 
+Notes/Updates
+-------------
+This bot is currently in development and will only reflect code that I manage to write that works.
+
 Useful Links
 ------------
 
