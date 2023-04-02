@@ -21,6 +21,7 @@ clr/clear - This clears the chat the command is run in. limit is 10,000</br>
 warn/w - This gives the user a warning</br>
 warns/ws - This gives the number, reasons, and mod who issued a specific warn</br>
 snipe/s - This snipes the users last message that was deleted</br>
+announce/a - This sends an announcment message to everyone in specified channel</br>
 
 Notes/Updates
 -------------
