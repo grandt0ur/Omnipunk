@@ -1,4 +1,4 @@
-<center># Omnipunk</center>
+# Omnipunk
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/metalgearsolid2/Omnipunk)
 ![Py-Cord Version](https://img.shields.io/pypi/v/py-cord)
 ![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2Fmetalgearfate)
