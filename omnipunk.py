@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix=commands.when_mentioned_or("."),
 bot.remove_command('help')
 bot.session = aiohttp.ClientSession()
 bot.warnings = {} # guild_id : {member_id: [count, [(admin_id, reason)]]}
-
+bot.sniped_messages = {}
 day = dt.now()
 
 @bot.event
@@ -55,7 +55,7 @@ async def on_guild_join(guild):
     bot.warnings[guild.id] = {}
 
 
-@bot.command()
+@bot.command(pass_context=True, aliases=['w'])
 async def warn(ctx, member: discord.Member = None, *, reason=None):
     if member is None:
         return await ctx.send("The provided member could not be found or you forgot to provide one.")
@@ -81,7 +81,7 @@ async def warn(ctx, member: discord.Member = None, *, reason=None):
     await member.send(f"You have been warned by {ctx.message.author}")
 
 
-@bot.command()
+@bot.command(pass_context=True, aliases=['ws'])
 async def warns(ctx, member: discord.Member = None):
     if member is None:
         return await ctx.send("The provided member could not be found or you forgot to provide one.")
@@ -94,11 +94,31 @@ async def warns(ctx, member: discord.Member = None):
             embed.description += f"**Warning {i}** given by: {admin.mention} for: *'{reason}'*.\n"
             i += 1
 
-        await ctx.send(embed=embed)
+        await member.send(embed=embed)
 
     except KeyError:  # no warnings
-        await ctx.send("This user has no warnings.")
+        await ctx.send("This user has no warnings...yet")
 
+
+@bot.event
+async def on_message_delete(message):
+    bot.sniped_messages[message.guild.id] = (message.content, message.author, message.channel.name, message.created_at)
+
+
+@bot.command(pass_context=True, aliases=['s'])
+async def snipe(ctx):
+    try:
+        contents, author, channel_name, time = bot.sniped_messages[ctx.guild.id]
+
+    except:
+        await ctx.channel.send("Couldn't find a message to snipe!")
+        return
+
+    embed = discord.Embed(description=contents, color=discord.Color.purple(), timestamp=time)
+    embed.set_author(name=f"{author.name}#{author.discriminator}", icon_url=author.avatar_url)
+    embed.set_footer(text=f"Deleted in : #{channel_name}")
+
+    await ctx.channel.send(embed=embed)
 
 @bot.command()
 async def gotcha(ctx):
@@ -116,11 +136,23 @@ async def test1(ctx):
 @bot.command(pass_context=True, aliases=['h'])
 async def help(ctx, member: discord.Member,):
     hlpembed=discord.Embed(title="Help Menu", colour=discord.Colour.blue())
-    hlpembed.add_field(name="mute", value="Mutes users for specified amount of time (a Reason is Required)", inline=False)
+    hlpembed.add_field(name="mute / m", value="Mutes users for specified amount of time (a Reason is Required)", inline=False)
     hlpembed.add_field(name="ex:", value=" .mute @you 10 lame-ass user", inline=False)
-    hlpembed.add_field(name="clr", value="This clears the chat the command is run in. limit is 10,000",
+    hlpembed.add_field(name="unmute / um", value="Unmutes users",
+                       inline=False)
+    hlpembed.add_field(name="ex:", value=" .unmute @you", inline=False)
+    hlpembed.add_field(name="clr / clear", value="This clears the chat the command is run in. limit is 10,000",
                        inline=False)
     hlpembed.add_field(name="ex:", value=" .clr 100", inline=False)
+    hlpembed.add_field(name="warn / w", value="This gives the user a warning",
+                       inline=False)
+    hlpembed.add_field(name="ex:", value=" .warn 100", inline=False)
+    hlpembed.add_field(name="warns / ws", value="This gives the number, reasons, and mod who issued a specific warn",
+                       inline=False)
+    hlpembed.add_field(name="ex:", value=" .ws @jupiter", inline=False)
+    hlpembed.add_field(name="snipe / s", value="This snipes the users last message",
+                       inline=False)
+    hlpembed.add_field(name="ex:", value=" .snipe", inline=False)
     await member.send(hlpembed)
     await ctx.send(f"Successfully sent help to {member}.")
 
@@ -153,7 +185,7 @@ async def userinfo(ctx: commands.Context, user: discord.User):
     avatar = user.display_avatar.url
     await ctx.send(f'User found: {user_id} -- {username}\n{avatar}')
 
-@bot.command(pass_context=True, aliases=['m', 'time'])
+@bot.command(pass_context=True, aliases=['m'])
 async def mute(ctx, member: discord.Member, time : int, *, reason=None):
     guild = ctx.guild
     mutedRole = discord.utils.get(guild.roles, name="Muted")
@@ -203,5 +235,5 @@ async def ann(ctx, *, message = None):
 @bot.event
 async def on_command_error(ctx, error):
     await ctx.send(f"Hey you know that a: '{str(error)}'")
-   
+
   bot.run("TOKEN HERE")
