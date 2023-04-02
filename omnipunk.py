@@ -56,6 +56,7 @@ async def on_guild_join(guild):
 
 
 @bot.command(pass_context=True, aliases=['w'])
+@commands.has_any_role("Jannies", "moderator")
 async def warn(ctx, member: discord.Member = None, *, reason=None):
     if member is None:
         return await ctx.send("The provided member could not be found or you forgot to provide one.")
@@ -106,6 +107,7 @@ async def on_message_delete(message):
 
 
 @bot.command(pass_context=True, aliases=['s'])
+@commands.has_any_role("Jannies", "moderator")
 async def snipe(ctx):
     try:
         contents, author, channel_name, time = bot.sniped_messages[ctx.guild.id]
@@ -158,6 +160,7 @@ async def help(ctx, member: discord.Member,):
 
 
 @bot.command(pass_context=True, aliases=['cls', 'clear'])
+@commands.has_any_role("Jannies", "moderator")
 async def clr(ctx, num: int = 10):
   if num > 10000 or num < 0:
     await ctx.send(f"**❌ Invalid Amount Maximum 500**")
@@ -186,6 +189,7 @@ async def userinfo(ctx: commands.Context, user: discord.User):
     await ctx.send(f'User found: {user_id} -- {username}\n{avatar}')
 
 @bot.command(pass_context=True, aliases=['m'])
+@commands.has_any_role("Jannies", "moderator")
 async def mute(ctx, member: discord.Member, time : int, *, reason=None):
     guild = ctx.guild
     mutedRole = discord.utils.get(guild.roles, name="Muted")
@@ -210,6 +214,7 @@ async def mute(ctx, member: discord.Member, time : int, *, reason=None):
 
 
 @bot.command(pass_context=True, aliases=['u', 'um'])
+@commands.has_any_role("Jannies", "moderator")
 async def unmute(ctx, member: discord.Member):
     guild = ctx.guild
     mutedRole = discord.utils.get(guild.roles, name="Muted")
@@ -221,6 +226,7 @@ async def unmute(ctx, member: discord.Member):
         await ctx.send("This user was never even muted, goofy!!!1")
 
 @bot.command(pass_context=True, aliases=['a', 'announce'])
+@commands.has_any_role("Jannies", "moderator")
 async def ann(ctx, *, message = None):
     channel = discord.utils.get(ctx.guild.text_channels, name="announcements")
     if message == None and channel == NotImplemented:
