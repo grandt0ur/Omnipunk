@@ -29,6 +29,7 @@ This bot is currently in development and will only reflect code that I manage to
 
 Useful Links
 ------------
-
-- `Pycord Documentation <https://docs.pycord.dev/en/master/index.html>`_
-- `NeoPunkFM Official Discord Server <https://neopunkfm.com/discord>`_
+[I'm an inline-style link with title](https://discord.com/api/oauth2/authorize?client_id=1091775387249422548&permissions=8&scope=bot "ADD BOT TO YOUR SERVER")
+`Add the bot to your <https://discord.com/api/oauth2/authorize?client_id=1091775387249422548&permissions=8&scope=bot>`
+`Pycord Documentation <https://docs.pycord.dev/en/master/index.html>`
+`NeoPunkFM Official Discord Server <https://neopunkfm.com/discord>`
