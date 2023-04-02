@@ -5,7 +5,7 @@
 ![Reddit User Karma](https://img.shields.io/reddit/user-karma/combined/NeoUnmei?style=social)
 ![GitHub repo size](https://img.shields.io/github/repo-size/metalgearsolid2/Omnipunk)
 </br>
-A Discord moderation bot for NeoPunkFM's Discord written in Python3 using Discordpy and various libraries.
+A Discord moderation bot for EVERYONE on Discord written in Python3 using Discordpy and various libraries.
 Key Features
 ------------
 
