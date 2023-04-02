@@ -25,7 +25,8 @@ announce/a - This sends an announcment message to everyone in specified channel<
 
 Notes/Updates
 -------------
-This bot is currently in development and will only reflect code that I manage to write that works.
+The code on this page is a reflection of all code that is added onto the VPS and ran. All code is not only operational</br>
+but is also reflective of all current commands unless this line is edited to say otherwise.
 
 Useful Links
 ------------
