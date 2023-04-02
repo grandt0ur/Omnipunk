@@ -118,7 +118,31 @@ async def unmute(ctx, member: discord.Member):
     else:
         await ctx.message.delete()
         await ctx.send(f"{member.mention} was never even muted, goofy!!!1")
+@bot.command()
 
+async def announce(self, ctx):
+
+    # Find a channel from the guilds `text channels` (Rather then voice channels)
+
+    # with the name announcements
+
+    channel = discord.utils.get(ctx.guild.text_channels, name="announcements")
+
+    if channel: # If a channel exists with the name
+
+                embed = discord.Embed(color=discord.Color.blue(), timestamp=ctx.message.created_at)
+
+                embed.set_author(name="Announcement", icon_url=self.client.user.avatar_url)
+
+                embed.add_field(name=f"Sent by {ctx.message.author}", value=str(message), inline=False)
+
+                embed.set_thumbnail(url=self.client.user.avatar_url)
+
+                embed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar_url)
+
+                await ctx.message.add_reaction(emoji="✅")
+
+                await channel.send(embed=embed)
 
 
 @bot.event
