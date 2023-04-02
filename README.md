@@ -15,12 +15,12 @@ Key Features
 
 Help Menu
 ------------------
-mute/m - Mutes users for specified amount of time (a reason is required)
-unmute/um - Unmutes users
-clr/clear - This clears the chat the command is run in. limit is 10,000
-warn/w - This gives the user a warning
-warns/ws - This gives the number, reasons, and mod who issued a specific warn
-snipe/s - This snipes the users last message that was deleted
+mute/m - Mutes users for specified amount of time (a reason is required)</br>
+unmute/um - Unmutes users</br>
+clr/clear - This clears the chat the command is run in. limit is 10,000</br>
+warn/w - This gives the user a warning</br>
+warns/ws - This gives the number, reasons, and mod who issued a specific warn</br>
+snipe/s - This snipes the users last message that was deleted</br>
 
 Useful Links
 ------------
