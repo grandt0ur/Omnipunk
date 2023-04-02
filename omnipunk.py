@@ -201,7 +201,7 @@ async def mute(ctx, member: discord.Member, time : int, *, reason=None):
     embed.add_field(name="Actual Mute Duration :", value=f"{time*60} Minutes", inline=False)
     embed.add_field(name="reason:", value=reason, inline=False)
     embed.set_footer(text="Bot Coded by fate")
-    await bot.get_channel(1091778467382706318).send(embed=embed)
+    await bot.get_channel(1073380690705522729).send(embed=embed)
     await member.add_roles(mutedRole, reason=reason)
     await member.send(f" you have been muted from: {guild.name} {ctx.message. author} for {time} hour(s)\n reason: {reason}. If this mute goes over 1day contact kismet#0005")
     await ctx.message.delete()
@@ -230,7 +230,7 @@ async def ann(ctx, *, message = None):
         embed2=discord.Embed(title='Announcements')
         embed2.add_field(name="", value=f"{message}")
         embed2.set_footer(text=f"Announced by {ctx.message.author}")
-        await bot.get_channel(1092111060489732097).send('@everyone', embed=embed2)
+        await bot.get_channel(1073393397609529466).send('@everyone', embed=embed2)
 
 @bot.event
 async def on_command_error(ctx, error):
