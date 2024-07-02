@@ -1,4 +1,4 @@
-# Omnipunk
+# OmniBot
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/metalgearsolid2/Omnipunk)
 ![Py-Cord Version](https://img.shields.io/pypi/v/py-cord)
 ![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2Fmetalgearfate)
@@ -25,14 +25,12 @@ announce/a - This sends an announcment message to everyone in specified channel<
 
 Notes/Updates
 -------------
-Recent Update : It seems im no longer wanted in the server that OmniPunk was made for so the code was taken down to prevent them from any fuckery.
-The code should be back relatively smoothed or until things blow over or up.
+Recent Update : I am reopening this project and will continue to push forward.
 
-The code on this page is a reflection of all code that is added onto the VPS and ran. All code is not only operational</br>
+The code on this page is a reflection of all code that is added onto the VPS and ran (if in use). All code is not only operational</br>
 but is also reflective of all current commands unless this line is edited to say otherwise.
 
 Useful Links
 ------------
 [ADD BOT TO YOUR SERVER]()</br>
 [Pycord Documentation](https://docs.pycord.dev/en/master/index.html)
-`NeoPunkFM Official Discord Server <https://neopunkfm.com/discord>`
