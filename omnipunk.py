@@ -5,6 +5,8 @@ import aiofiles
 from datetime import datetime as dt
 from asyncio import sleep as s
 import aiohttp
+import sqlite3
+import json
 from discord.ext import commands
 
 intents = discord.Intents.default()
@@ -17,10 +19,37 @@ bot.remove_command('help')
 bot.warnings = {}  # guild_id : {member_id: [count, [(admin_id, reason)]]}
 bot.deleted_messages = {}
 day = dt.now()
-def load_channel_ids():
-    with open('channels.json', 'r') as f:
-        data = json.load(f)
-        return data.get('channels', [])
+
+CHANNELS_FILE = 'channels.json'
+USERS_FILE = 'underage_users.json'
+
+# Load channels from JSON
+def load_channel_data():
+    try:
+        with open(CHANNELS_FILE, 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {"channels": []}
+
+# Save channels to JSON
+def save_channel_data(data):
+    with open(CHANNELS_FILE, 'w') as file:
+        json.dump(data, file, indent=4)
+
+# Load underage users from JSON
+def load_underage_users():
+    try:
+        with open(USERS_FILE, 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {"users": []}
+
+# Save underage users to JSON
+def save_underage_users(data):
+    with open(USERS_FILE, 'w') as file:
+        json.dump(data, file, indent=4)
+
+
 @bot.event
 async def on_message_delete(message):
     if message.guild is None or message.channel is None:
@@ -108,10 +137,15 @@ async def on_member_join(member):
         
         # Get guild
         guild = member.guild
-        channel_ids = load_channel_ids()  # Load the list of channel IDs
         
-        for channel_id in channel_ids:
-            channel = guild.get_channel(int(channel_id))
+        # Load channels
+        channel_data = load_channel_data()
+        
+        # Load underage users
+        underage_users = load_underage_users()
+
+        for channel_id in channel_data.get("channels", []):
+            channel = guild.get_channel(channel_id)
             
             if channel:
                 # Clear all current permissions for the user
@@ -119,13 +153,73 @@ async def on_member_join(member):
                 
                 if age < 18:
                     # Allow users under 18 to view and send messages
-                    await channel.set_permissions(member, read_messages=False, send_messages=False)
+                    await channel.set_permissions(member, read_messages=True, send_messages=True)
+                    # Add user to underage list
+                    underage_users["users"].append({"id": str(member.id), "name": member.name})
                 else:
                     # Allow users 18 and older to view and send messages
                     await channel.set_permissions(member, read_messages=True, send_messages=True)
+                    # Remove user from underage list if they are in it
+                    underage_users["users"] = [u for u in underage_users["users"] if u["id"] != str(member.id)]
+        
+        # Save underage users
+        save_underage_users(underage_users)
         
         # Notify the user
         await member.send(f"Your age has been verified. You now have access to the appropriate channels.")
+    except ValueError:
+        await member.send("Please enter a valid age (number).")
+    except asyncio.TimeoutError:
+        await member.send("You took too long to respond. Please try again later.")
+    except Exception as e:
+        await member.send(f"An error occurred: {str(e)}")
+
+# Manual age verification command
+@bot.command(name='manualverify', aliases=['mv'])
+async def manual_verify(ctx, member: discord.Member):
+    try:
+        await member.send("Please enter your age to get access to the appropriate channels.")
+        
+        def check(m):
+            return m.author == member and isinstance(m.channel, discord.DMChannel)
+        
+        response = await bot.wait_for('message', timeout=60.0, check=check)
+        age = int(response.content)
+        
+        # Get guild
+        guild = ctx.guild
+        
+        # Load channels
+        channel_data = load_channel_data()
+        
+        # Load underage users
+        underage_users = load_underage_users()
+        
+        for channel_id in channel_data.get("channels", []):
+            channel = guild.get_channel(channel_id)
+            
+            if channel:
+                # Clear all current permissions for the user
+                await channel.set_permissions(member, overwrite=None)
+                
+                if age < 18:
+                    # Allow users under 18 to view and send messages
+                    await channel.set_permissions(member, read_messages=True, send_messages=True)
+                    # Add user to underage list
+                    if not any(u["id"] == str(member.id) for u in underage_users["users"]):
+                        underage_users["users"].append({"id": str(member.id), "name": member.name})
+                else:
+                    # Allow users 18 and older to view and send messages
+                    await channel.set_permissions(member, read_messages=True, send_messages=True)
+                    # Remove user from underage list if they are in it
+                    underage_users["users"] = [u for u in underage_users["users"] if u["id"] != str(member.id)]
+        
+        # Save underage users
+        save_underage_users(underage_users)
+        
+        # Notify the user
+        await member.send(f"Your age has been verified. You now have access to the appropriate channels.")
+        await ctx.send(f"Verification process for {member.mention} has been completed.")
     except ValueError:
         await member.send("Please enter a valid age (number).")
     except asyncio.TimeoutError:
@@ -151,4 +245,4 @@ async def last_deleted(ctx):
         await ctx.send("No deleted messages found in this channel.")
 
 
-bot.run
+bot.run("ENTER TOKEN HERE")
