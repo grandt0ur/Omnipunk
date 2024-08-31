@@ -21,8 +21,10 @@ Notes/Updates
 -------------
 Recent Update :
 
-8/31/24 - I have revamped the code for the bot and have added certain features that will need to be tested.  
-        - Added the Invisible Age Verification and Remediation.
+8/31/24 
+
+- I have revamped the code for the bot and have added certain features that will need to be tested.  
+- Added the Invisible Age Verification and Remediation.
 - Included SQL Database integration
 -------------
 
