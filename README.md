@@ -14,13 +14,8 @@ Key Features
 
 Help Menu
 ------------------
-mute/m - Mutes users for specified amount of time (a reason is required)</br>
-unmute/um - Unmutes users</br>
-clr/clear - This clears the chat the command is run in. limit is 10,000</br>
-warn/w - This gives the user a warning</br>
-warns/ws - This gives the number, reasons, and mod who issued a specific warn</br>
 snipe/s - This snipes the users last message that was deleted</br>
-announce/a - This sends an announcment message to everyone in specified channel</br>
+
 
 Notes/Updates
 -------------
@@ -28,6 +23,7 @@ Recent Update :
 
 8/31/24 - I have revamped the code for the bot and have added certain features that will need to be tested.  
         - Added the Invisible Age Verification and Remediation.
+- Included SQL Database integration
 -------------
 
 The code on this page is a reflection of all code that is added onto the VPS and ran (if in use). All code is not only operational</br>
