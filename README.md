@@ -24,7 +24,11 @@ announce/a - This sends an announcment message to everyone in specified channel<
 
 Notes/Updates
 -------------
-Recent Update : I am reopening this project and will continue to push forward.
+Recent Update :
+
+8/31/24 - I have revamped the code for the bot and have added certain features that will need to be tested.  
+        - Added the Invisible Age Verification and Remediation.
+-------------
 
 The code on this page is a reflection of all code that is added onto the VPS and ran (if in use). All code is not only operational</br>
 but is also reflective of all current commands unless this line is edited to say otherwise.
