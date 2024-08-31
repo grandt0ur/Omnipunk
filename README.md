@@ -1,7 +1,6 @@
 # OmniBot
-![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/metalgearsolid2/Omnipunk)
+![GitHub Release](https://img.shields.io/github/v/release/grandt0ur/Omnipunk)
 ![Py-Cord Version](https://img.shields.io/pypi/v/py-cord)
-![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2Fmetalgearfate)
 ![Reddit User Karma](https://img.shields.io/reddit/user-karma/combined/NeoUnmei?style=social)
 ![GitHub repo size](https://img.shields.io/github/repo-size/metalgearsolid2/Omnipunk)
 </br>
