@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 import logging
 from contextlib import closing
 import re
-import json
 
 # 1. Token Security
 load_dotenv()
@@ -123,6 +122,8 @@ def has_allowed_role():
         return any(role.id in ALLOWED_ROLE_IDS for role in ctx.author.roles)
     return commands.check(predicate)
 
+ADULT_ONLY_CHANNEL_ID = 1191075004285202503
+
 @bot.event
 async def on_member_join(member):
     try:
@@ -141,23 +142,18 @@ async def on_member_join(member):
         if age_status == "underage":
             logging.info(f"Adding underage user: id={member.id}, name={member.name}, age={age}")
             add_underage_user(member.id, member.name, age, account_creation, join_date)
+            
+            # Restrict access to adult-only channel
+            adult_channel = member.guild.get_channel(ADULT_ONLY_CHANNEL_ID)
+            if adult_channel:
+                await adult_channel.set_permissions(member, read_messages=False, send_messages=False)
+                logging.info(f"Restricted access to adult-only channel for underage user: {member.id}")
+            
+            await member.send(f"Your age ({age}) has been recorded. As you are under 18, your access to certain channels will be restricted.")
         else:
-            logging.info(f"Removing user from underage: id={member.id}")
             remove_underage_user(member.id)
-        
-        # Uncomment the following block if you want to use channel-specific permissions
-        # channel_data = load_channel_data()
-        # for channel_id in channel_data.get("channels", []):
-        #     channel = member.guild.get_channel(channel_id)
-        #     if channel:
-        #         if age_status == "underage":
-        #             logging.info(f"Setting permissions for underage user in channel: {channel.name}")
-        #             await channel.set_permissions(member, read_messages=True, send_messages=True)
-        #         else:
-        #             logging.info(f"Removing specific permissions for user in channel: {channel.name}")
-        #             await channel.set_permissions(member, overwrite=None)
-        
-        await member.send("Your age has been verified. You now have access to the appropriate channels.")
+            await member.send(f"Your age ({age}) has been recorded. You have full access to the server.")
+
         logging.info(f"User {member.id} joined and was verified as {age_status}")
     except ValueError as e:
         logging.error(f"ValueError in age verification: {str(e)}")
@@ -171,7 +167,6 @@ async def on_member_join(member):
         await member.send(error_message)
 
 @bot.command(name='manualverify', aliases=['mv'])
-@has_allowed_role()
 async def manualverify(ctx, member: discord.Member):
     if is_underage(member.id):
         await ctx.send(f"{member.mention} is already verified as underage.")
@@ -191,15 +186,27 @@ async def manualverify(ctx, member: discord.Member):
         account_creation = member.created_at.isoformat()
         join_date = member.joined_at.isoformat()
 
+        adult_channel = ctx.guild.get_channel(ADULT_ONLY_CHANNEL_ID)
+
         if age_status == "underage":
             add_underage_user(member.id, member.name, age, account_creation, join_date)
-            await member.send(f"Your age ({age}) has been recorded. As you are under 18, please be aware of online safety.")
+            await member.send(f"Your age ({age}) has been recorded. As you are under 18, your access to certain channels will be restricted.")
             await ctx.send(f"{member.mention} is now marked as underage.")
+            
+            if adult_channel:
+                await adult_channel.set_permissions(member, read_messages=False, send_messages=False)
+                logging.info(f"Restricted access to adult-only channel for underage user: {member.id}")
+            
             logging.info(f"User {member.id} manually verified as underage by {ctx.author.id}")
         else:
             remove_underage_user(member.id)
-            await member.send(f"Your age ({age}) is above the threshold. No further action is required.")
+            await member.send(f"Your age ({age}) has been recorded. You have full access to the server.")
             await ctx.send(f"{member.mention} is verified as not underage.")
+            
+            if adult_channel:
+                await adult_channel.set_permissions(member, overwrite=None)
+                logging.info(f"Removed restrictions from adult-only channel for user: {member.id}")
+            
             logging.info(f"User {member.id} manually verified as of age by {ctx.author.id}")
 
     except asyncio.TimeoutError:
