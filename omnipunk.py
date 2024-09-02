@@ -10,6 +10,10 @@ from contextlib import closing
 import re
 from googleapiclient.discovery import build
 import json
+import pylast
+import matplotlib.pyplot as plt
+import io
+import aiohttp
 
 # Load environment variables
 load_dotenv()
@@ -17,6 +21,7 @@ BOT_TOKEN = os.getenv('BOT_TOKEN')
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 YOUTUBE_CHANNEL_ID = os.getenv('YOUTUBE_CHANNEL_ID')
 DISCORD_CHANNEL_ID = int(os.getenv('DISCORD_CHANNEL_ID'))
+ANNOUNCEMENT_CHANNEL_ID = int(os.getenv('ANNOUNCEMENT_CHANNEL_ID'))
 
 if not BOT_TOKEN:
     raise ValueError("No bot token found. Make sure to set it in your .env file.")
@@ -177,6 +182,7 @@ async def on_member_join(member):
 
 @bot.command(name='manualverify', aliases=['mv'])
 async def manualverify(ctx, member: discord.Member):
+    """Sends the age verification to users who may not have had to do it"""
     if is_underage(member.id):
         await ctx.send(f"{member.mention} is already verified as underage.")
         return
@@ -233,12 +239,12 @@ async def on_command_error(ctx, error):
         error_message = handle_error(error, "in command execution")
         await ctx.send(error_message)
 
-@bot.command()
+@bot.command(name='gotcha')
 async def gotcha(ctx):
-    """Destinys Qoute"""
+    """Destiny's Quote"""
     await ctx.send('Anything Else?')
 
-@bot.command()
+@bot.command(name='test1')
 async def test1(ctx):
     """My Jokes"""
     await ctx.send('I cant wait to see what cosmic horrors I will face in NeoPunkFMs Discord')
@@ -287,49 +293,64 @@ async def on_ready():
     logging.info(f'Logged in as {bot.user.name}')
     check_for_new_videos.start()
 
-@bot.command(name='testchannel')
-@commands.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
-async def test_channel(ctx):
-    try:
-        channel = bot.get_channel(DISCORD_CHANNEL_ID)
-        if channel:
-            await channel.send("This is a test message from your new overlords!")
-            await ctx.send(f"Test message sent to channel: {channel.name}")
-            logging.info(f"Test message sent to channel: {channel.name}")
-        else:
-            await ctx.send(f"Could not find channel with ID: {DISCORD_CHANNEL_ID}")
-            logging.warning(f"Could not find channel with ID: {DISCORD_CHANNEL_ID}")
-    except Exception as e:
-        await ctx.send(f"An error occurred: {str(e)}")
-        logging.error(f"An error occurred in test_channel command: {str(e)}", exc_info=True)
-
 @bot.command(name='checkyoutube')
 @commands.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
 async def check_youtube(ctx):
+    """Checks and displays the latest YouTube video"""
     latest_video_id = get_latest_video_id()
     if latest_video_id:
         await ctx.send(f"Latest video: https://www.youtube.com/watch?v={latest_video_id}")
     else:
         await ctx.send("Couldn't fetch the latest video.")
 
-@bot.command(aliases=['h'])
+@bot.command(name='announce')
+@commands.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
+async def announce(ctx, channel: discord.TextChannel, *, message: str):
+    """Send an announcement to a specified channel"""
+    if not channel:
+        await ctx.send("Channel not found.")
+        return
+
+    embed = discord.Embed(title="Announcement", description=message, color=discord.Color.blue())
+    embed.set_footer(text=f"Sent by {ctx.author.display_name}", icon_url=ctx.author.avatar.url)
+
+    await channel.send(embed=embed)
+    await ctx.send(f"Announcement sent successfully to {channel.mention}.")
+
+@announce.error
+async def announce_error(ctx, error):
+    if isinstance(error, commands.MissingAnyRole):
+        await ctx.send("You do not have the required role to use this command.")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Please provide a channel and a message to announce. Usage: `./announce #channel <message>`")
+    else:
+        await ctx.send(f"An error occurred: {str(error)}")
+
+@bot.command(name='help', aliases=['h'])
 async def help(ctx):
-    hlpembed = discord.Embed(title="Help Menu", colour=discord.Colour.blue())
-    hlpembed.add_field(name="snipe / s", value="This snipes the user's last message", inline=False)
-    hlpembed.add_field(name="ex:", value=" .snipe", inline=False)
-    hlpembed.add_field(name="manualverify / mv", value="This sends the age verification to users who may not have had to do it. This has to be done individually", inline=False)
-    hlpembed.add_field(name="ex:", value=" ./mv @GT", inline=False)
-    hlpembed.add_field(name="help / h", value="This displays the help menu.", inline=False)
-    hlpembed.add_field(name="ex:", value=" .help", inline=False)
-    hlpembed.add_field(name="testchannel", value="Tests sending a message to the specified channel", inline=False)
-    hlpembed.add_field(name="ex:", value=" ./testchannel", inline=False)
-    hlpembed.add_field(name="gotcha", value="Destiny's Quote", inline=False)
-    hlpembed.add_field(name="ex:", value=" ./gotcha", inline=False)
-    hlpembed.add_field(name="test1", value="My Jokes", inline=False)
-    hlpembed.add_field(name="ex:", value=" ./test1", inline=False)
-    hlpembed.add_field(name="checkyoutube", value="Checks and displays the latest YouTube video", inline=False)
-    hlpembed.add_field(name="ex:", value=" ./checkyoutube", inline=False)
-    await ctx.send(embed=hlpembed)
+    """This displays the help menu."""
+    embed = discord.Embed(title="NeoPunkXM Bot Help", description="Here are the available commands:", color=discord.Color.purple())
+    
+    command_groups = {
+        "General": ["help", "snipe"],
+        "User Management": ["manualverify"],
+        "Announcements": ["announce"],
+        "Miscellaneous": ["gotcha", "test1", "checkyoutube"]
+    }
+    
+    for group, commands_list in command_groups.items():
+        commands_info = []
+        for command in commands_list:
+            cmd = bot.get_command(command)
+            if cmd:
+                aliases = f" (aliases: {', '.join(cmd.aliases)})" if cmd.aliases else ""
+                commands_info.append(f"`{cmd.name}{aliases}`: {cmd.help or 'No description available.'}")
+        
+        if commands_info:
+            embed.add_field(name=group, value="\n".join(commands_info), inline=False)
+    
+    embed.set_footer(text="Use ./help <command> for more info on a specific command.")
+    await ctx.send(embed=embed)
 
 init_db()
 bot.run(BOT_TOKEN)
