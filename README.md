@@ -91,8 +91,8 @@ Contributions to improve the bot are welcome. Please follow these steps:
 
 ## License
 
-[Specify your license here, e.g., MIT License]
+None. Code is free. Like me :)
 
 ## Support
 
-For support, please [specify contact method or create an issue in the repository].
+For support, please pray to God, cause lord knows I have no idea what im doing.
