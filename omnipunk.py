@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import sqlite3
 import asyncio
 from datetime import datetime
@@ -8,12 +8,21 @@ from dotenv import load_dotenv
 import logging
 from contextlib import closing
 import re
+from googleapiclient.discovery import build
+import json
 
-# 1. Token Security
+# Load environment variables
 load_dotenv()
 BOT_TOKEN = os.getenv('BOT_TOKEN')
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
+YOUTUBE_CHANNEL_ID = os.getenv('YOUTUBE_CHANNEL_ID')
+DISCORD_CHANNEL_ID = int(os.getenv('DISCORD_CHANNEL_ID'))
+
 if not BOT_TOKEN:
     raise ValueError("No bot token found. Make sure to set it in your .env file.")
+
+if not YOUTUBE_API_KEY or not YOUTUBE_CHANNEL_ID:
+    raise ValueError("YouTube API key or Channel ID not found. Make sure to set them in your .env file.")
 
 intents = discord.Intents.default()
 intents.members = True
@@ -234,12 +243,92 @@ async def test1(ctx):
     """My Jokes"""
     await ctx.send('I cant wait to see what cosmic horrors I will face in NeoPunkFMs Discord')
 
+# YouTube API setup
+youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+
+def get_latest_video_id():
+    try:
+        request = youtube.search().list(
+            part="id,snippet",
+            channelId=YOUTUBE_CHANNEL_ID,
+            type="video",
+            order="date",
+            maxResults=1
+        )
+        response = request.execute()
+        if 'items' in response and response['items']:
+            return response['items'][0]['id']['videoId']
+    except Exception as e:
+        logging.error(f"Error fetching latest video: {str(e)}")
+    return None
+
+@tasks.loop(minutes=5)  # Check every 5 minutes
+async def check_for_new_videos():
+    try:
+        with open('last_video.json', 'r') as f:
+            data = json.load(f)
+            last_video_id = data['last_video_id']
+    except FileNotFoundError:
+        last_video_id = None
+
+    latest_video_id = get_latest_video_id()
+
+    if latest_video_id and latest_video_id != last_video_id:
+        channel = bot.get_channel(DISCORD_CHANNEL_ID)
+        if channel:
+            await channel.send(f"New video uploaded! https://www.youtube.com/watch?v={latest_video_id}")
+            logging.info(f"New video posted: {latest_video_id}")
+        
+        with open('last_video.json', 'w') as f:
+            json.dump({'last_video_id': latest_video_id}, f)
+
+@bot.event
+async def on_ready():
+    logging.info(f'Logged in as {bot.user.name}')
+    check_for_new_videos.start()
+
+@bot.command(name='testchannel')
+@commands.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
+async def test_channel(ctx):
+    try:
+        channel = bot.get_channel(DISCORD_CHANNEL_ID)
+        if channel:
+            await channel.send("This is a test message from your new overlords!")
+            await ctx.send(f"Test message sent to channel: {channel.name}")
+            logging.info(f"Test message sent to channel: {channel.name}")
+        else:
+            await ctx.send(f"Could not find channel with ID: {DISCORD_CHANNEL_ID}")
+            logging.warning(f"Could not find channel with ID: {DISCORD_CHANNEL_ID}")
+    except Exception as e:
+        await ctx.send(f"An error occurred: {str(e)}")
+        logging.error(f"An error occurred in test_channel command: {str(e)}", exc_info=True)
+
+@bot.command(name='checkyoutube')
+@commands.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
+async def check_youtube(ctx):
+    latest_video_id = get_latest_video_id()
+    if latest_video_id:
+        await ctx.send(f"Latest video: https://www.youtube.com/watch?v={latest_video_id}")
+    else:
+        await ctx.send("Couldn't fetch the latest video.")
+
 @bot.command(aliases=['h'])
 async def help(ctx):
     hlpembed = discord.Embed(title="Help Menu", colour=discord.Colour.blue())
     hlpembed.add_field(name="snipe / s", value="This snipes the user's last message", inline=False)
     hlpembed.add_field(name="ex:", value=" .snipe", inline=False)
-    
+    hlpembed.add_field(name="manualverify / mv", value="This sends the age verification to users who may not have had to do it. This has to be done individually", inline=False)
+    hlpembed.add_field(name="ex:", value=" ./mv @GT", inline=False)
+    hlpembed.add_field(name="help / h", value="This displays the help menu.", inline=False)
+    hlpembed.add_field(name="ex:", value=" .help", inline=False)
+    hlpembed.add_field(name="testchannel", value="Tests sending a message to the specified channel", inline=False)
+    hlpembed.add_field(name="ex:", value=" ./testchannel", inline=False)
+    hlpembed.add_field(name="gotcha", value="Destiny's Quote", inline=False)
+    hlpembed.add_field(name="ex:", value=" ./gotcha", inline=False)
+    hlpembed.add_field(name="test1", value="My Jokes", inline=False)
+    hlpembed.add_field(name="ex:", value=" ./test1", inline=False)
+    hlpembed.add_field(name="checkyoutube", value="Checks and displays the latest YouTube video", inline=False)
+    hlpembed.add_field(name="ex:", value=" ./checkyoutube", inline=False)
     await ctx.send(embed=hlpembed)
 
 init_db()
