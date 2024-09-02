@@ -1,118 +1,85 @@
-# NeoPunkXM Discord Bot
-![GitHub Release](https://img.shields.io/github/v/release/grandt0ur/Omnipunk)
-![Py-Cord Version](https://img.shields.io/pypi/v/py-cord)
-![Reddit User Karma](https://img.shields.io/reddit/user-karma/combined/NeoUnmei?style=social)
-![GitHub repo size](https://img.shields.io/github/repo-size/metalgearsolid2/Omnipunk)
+# NeoPunkXM Bot v1.0.2
 
-NeoPunkXM is a Discord bot designed to manage age verification, provide various utility commands, and post YouTube video updates to a specified channel.
+## Overview
 
-## Features
+NeoPunkXM Bot is a versatile Discord bot designed to enhance your server with a variety of features, including user management, announcements, and miscellaneous fun commands. This release includes several key functionalities and improvements to make your server management more efficient and engaging.
 
-- Age verification for new members
-- Manual age verification for existing members
-- Restriction of adult content for underage users
-- YouTube video update notifications
-- Various utility and fun commands
+## Key Features
 
-## Setup
+### User Management
+- **Manual Verification**: Allows administrators to manually verify users' ages and manage access to age-restricted channels.
+  - **Command**: `./manualverify @user`
+  - **Description**: Sends an age verification prompt to the specified user.
 
-1. Clone this repository to your local machine.
+### Announcements
+- **Send Announcements**: Allows users with specific roles to send announcements to any text channel in the server.
+  - **Command**: `./announce #channel <message>`
+  - **Description**: Sends an announcement to the specified channel as an embed, mentioning the user who sent it.
+  - **Roles Required**: `NeoPunkFM`, `NPFM Affiliate`, `Neo-Engineer`
 
-2. Create a virtual environment and activate it:
+### Miscellaneous
+- **Gotcha**: A fun command that sends a predefined message.
+  - **Command**: `./gotcha`
+  - **Description**: Sends a fun message to the channel.
+  
+- **Test1**: Another fun command for sending a predefined joke.
+  - **Command**: `./test1`
+  - **Description**: Sends a joke to the channel.
+
+- **Check YouTube**: Checks and displays the latest YouTube video from a specified channel.
+  - **Command**: `./checkyoutube`
+  - **Description**: Displays the latest YouTube video link.
+  - **Roles Required**: `NeoPunkFM`, `NPFM Affiliate`, `Neo-Engineer`
+
+### Help Command
+- **Help Menu**: Provides a detailed help menu with all available commands, grouped into categories.
+  - **Command**: `./help` or `./h`
+  - **Description**: Displays the help menu with command descriptions and usage.
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/neopunkxm-bot.git
+   cd neopunkxm-bot
    ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+
+2. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
    ```
 
-3. Install the required dependencies:
-   ```
-   pip install discord.py python-dotenv google-api-python-client
-   ```
-
-4. Create a `.env` file in the root directory with the following content:
+3. Set up your `.env` file with the necessary environment variables:
    ```
    BOT_TOKEN=your_discord_bot_token
-   YOUTUBE_API_KEY=your_youtube_api_key
-   YOUTUBE_CHANNEL_ID=your_youtube_channel_id
-   DISCORD_CHANNEL_ID=your_discord_channel_id
-   ```
-   Replace the placeholders with your actual values.
-
-5. Run the bot:
-   ```
-   python bot2.py
+   ANNOUNCEMENT_CHANNEL_ID=your_announcement_channel_id
    ```
 
-## Commands
+4. Run the bot:
+   ```bash
+   python bot.py
+   ```
 
-- `./snipe` or `./s`: Retrieves the last deleted message in the channel.
-- `./manualverify` or `./mv`: Manually triggers age verification for a user.
-- `./help` or `./h`: Displays the help menu with all available commands.
-- `./testchannel`: Tests the bot's ability to send messages to the specified channel.
-- `./gotcha`: Displays Destiny's quote.
-- `./test1`: Displays a joke.
-- `./checkyoutube`: Manually checks and displays the latest YouTube video from the specified channel.
+## Requirements
 
-## Permissions
+- Python 3.8+
+- `discord.py`
+- `python-dotenv`
+- `google-api-python-client`
+- `matplotlib`
+- `aiohttp`
 
-Most commands are restricted to users with the following roles:
-- NeoPunkFM
-- NPFM Affiliate
-- Neo-Engineer
+## Changelog
 
-## Age Verification
+### v1.0.2
+- Improved the `announce` command to allow sending announcements to any specified channel.
+- Updated the help command to reflect current commands.
+- Removed deprecated and unused commands for a cleaner codebase.
+- Fixed an issue with the `announce` command where the `avatar_url` attribute caused an error.
 
-- New members are automatically prompted for age verification upon joining.
-- Users under 18 are restricted from accessing adult-only channels.
-- Manual verification can be triggered by moderators using the `./manualverify` command.
+### v1.0.1
+- Minor bug fixes and performance improvements.
 
-## YouTube Integration
-
-- The bot automatically checks for new videos every 5 minutes.
-- New videos are posted to the specified Discord channel.
-- Use `./checkyoutube` to manually check for the latest video.
-
-## Logging
-
-The bot logs important events and errors to both the console and a `bot.log` file.
-
-## Database
-
-User age information is stored in an SQLite database (`users.db`) for persistent age verification.
-
-## Contributing
-
-Contributions to improve the bot are welcome. Please follow these steps:
-1. Fork the repository
-2. Create a new branch for your feature
-3. Commit your changes
-4. Push to the branch
-5. Create a new Pull Request
-
-
-### Omnipunk-Gemini
-## Gemini AI Integration
-
-This project now includes integration with Google's Gemini AI, providing advanced conversational capabilities to the bot.
-
-### Features
-
-- **AI-Powered Chat**: Users can engage in conversations with the bot using Gemini AI.
-- **Natural Language Processing**: The bot can understand and respond to a wide range of queries and prompts.
-- **Separate Script**: The AI functionality is implemented in a separate script for modularity and ease of maintenance.
-
-### Usage
-
-To use the Gemini AI feature:
-
-1. Ensure you have set up the `GEMINI_API_KEY` in your `.env` file.
-2. Use the command `./chat [your message]` to start a conversation with the AI.
-
-Example:
-## License
-
-None. Code is free. Like me :)
-
-## Support
-
-For support, please pray to God, cause lord knows I have no idea what im doing.
+### v1.0.0
+- Initial release with core features:
+  - User management with manual
