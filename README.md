@@ -89,6 +89,26 @@ Contributions to improve the bot are welcome. Please follow these steps:
 4. Push to the branch
 5. Create a new Pull Request
 
+
+###Omnipunk-Gemini
+## Gemini AI Integration
+
+This project now includes integration with Google's Gemini AI, providing advanced conversational capabilities to the bot.
+
+### Features
+
+- **AI-Powered Chat**: Users can engage in conversations with the bot using Gemini AI.
+- **Natural Language Processing**: The bot can understand and respond to a wide range of queries and prompts.
+- **Separate Script**: The AI functionality is implemented in a separate script for modularity and ease of maintenance.
+
+### Usage
+
+To use the Gemini AI feature:
+
+1. Ensure you have set up the `GEMINI_API_KEY` in your `.env` file.
+2. Use the command `./chat [your message]` to start a conversation with the AI.
+
+Example:
 ## License
 
 None. Code is free. Like me :)
