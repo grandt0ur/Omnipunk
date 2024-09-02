@@ -90,7 +90,7 @@ Contributions to improve the bot are welcome. Please follow these steps:
 5. Create a new Pull Request
 
 
-###Omnipunk-Gemini
+### Omnipunk-Gemini
 ## Gemini AI Integration
 
 This project now includes integration with Google's Gemini AI, providing advanced conversational capabilities to the bot.
