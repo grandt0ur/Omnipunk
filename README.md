@@ -1,8 +1,9 @@
 # NeoPunkXM Discord Bot
 
 ![GitHub Release](https://img.shields.io/github/v/releases/grandt0ur/Omnipunk)
-![Py-Cord Version](https://img.shields.io/pypi/v/py-cord)
-![Reddit User Karma](https://img.shields.io/reddit/user-karma/combined/NeoUnmei?style=social)
+[![Made with Python](https://img.shields.io/badge/Python->=3.10-blue?logo=python&logoColor=white)](https://python.org "Go to Python homepage")
+[![Made with SQLite](https://img.shields.io/badge/SQLite-3-blue?logo=sqlite&logoColor=white)](https://www.sqlite.org/index.html "Go to SQLite homepage")
+![maintained - yes](https://img.shields.io/badge/maintained-yes-blue)
 ![GitHub repo size](https://img.shields.io/github/repo-size/metalgearsolid2/Omnipunk)
 
 NeoPunkXM is a Discord bot designed to manage age verification, provide various utility commands, and post YouTube video updates to a specified channel.
