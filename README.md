@@ -1,6 +1,6 @@
 # NeoPunkXM Discord Bot
 
-![GitHub Release](https://img.shields.io/github/v/releases/grandt0ur/Omnipunk)
+![GitHub Release](https://img.shields.io/github/v/release/grandt0ur/Omnipunk)
 [![Made with Python](https://img.shields.io/badge/Python->=3.10-blue?logo=python&logoColor=white)](https://python.org "Go to Python homepage")
 [![Made with SQLite](https://img.shields.io/badge/SQLite-3-blue?logo=sqlite&logoColor=white)](https://www.sqlite.org/index.html "Go to SQLite homepage")
 ![maintained - yes](https://img.shields.io/badge/maintained-yes-blue)
