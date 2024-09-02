@@ -1,0 +1,365 @@
+import discord
+from discord.ext import commands, tasks
+import sqlite3
+import asyncio
+from datetime import datetime
+import os
+from dotenv import load_dotenv
+import logging
+from contextlib import closing
+import re
+from googleapiclient.discovery import build
+import json
+import google.generativeai as genai
+
+# Load environment variables
+load_dotenv()
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
+YOUTUBE_CHANNEL_ID = os.getenv('YOUTUBE_CHANNEL_ID')
+DISCORD_CHANNEL_ID = int(os.getenv('DISCORD_CHANNEL_ID'))
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
+if not BOT_TOKEN:
+    raise ValueError("No bot token found. Make sure to set it in your .env file.")
+
+if not YOUTUBE_API_KEY or not YOUTUBE_CHANNEL_ID:
+    raise ValueError("YouTube API key or Channel ID not found. Make sure to set them in your .env file.")
+
+if not GEMINI_API_KEY:
+    raise ValueError("Gemini API key not found. Make sure to set it in your .env file.")
+
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
+
+bot = commands.Bot(command_prefix=commands.when_mentioned_or("./"), intents=intents)
+bot.remove_command('help')
+
+# Logging configuration
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    filename='bot.log')
+
+# Console handler
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console.setFormatter(formatter)
+logging.getLogger('').addHandler(console)
+
+ALLOWED_ROLE_IDS = [1191071898218549270, 1278866719384932374, 1191072430781894716]
+
+# 2. Input Validation
+def validate_age(age):
+    try:
+        age = int(age)
+        if age < 0:
+            raise ValueError("Age cannot be negative")
+        if age < 18:
+            return age, "underage"
+        return age, "of_age"
+    except ValueError:
+        raise ValueError("Invalid age input")
+
+def sanitize_input(input_string):
+    # Remove any potentially dangerous characters
+    return re.sub(r'[^\w\s-]', '', input_string).strip()
+
+# 3. Error Handling
+def handle_error(error, context=""):
+    error_message = f"An error occurred {context}: {str(error)}"
+    logging.error(error_message)
+    return "An unexpected error occurred. Please try again later or contact an administrator."
+
+# 4. Database Security
+def init_db():
+    try:
+        with closing(sqlite3.connect('users.db')) as conn:
+            with closing(conn.cursor()) as c:
+                c.execute('''CREATE TABLE IF NOT EXISTS underage_users
+                             (id TEXT PRIMARY KEY, 
+                              name TEXT, 
+                              age INTEGER, 
+                              account_creation TEXT, 
+                              join_date TEXT)''')
+                conn.commit()
+        logging.info("Database initialized successfully")
+    except sqlite3.Error as e:
+        logging.error(f"Database initialization error: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error during database initialization: {e}")
+
+def add_underage_user(user_id, name, age, account_creation, join_date):
+    try:
+        with closing(sqlite3.connect('users.db')) as conn:
+            with closing(conn.cursor()) as c:
+                c.execute("""INSERT OR REPLACE INTO underage_users 
+                             (id, name, age, account_creation, join_date) 
+                             VALUES (?, ?, ?, ?, ?)""",
+                          (str(user_id), sanitize_input(name), age, account_creation, join_date))
+                conn.commit()
+        logging.info(f"Added underage user: {user_id}")
+    except sqlite3.Error as e:
+        logging.error(f"Database error in add_underage_user: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error in add_underage_user: {e}")
+
+def remove_underage_user(user_id):
+    try:
+        with closing(sqlite3.connect('users.db')) as conn:
+            with closing(conn.cursor()) as c:
+                c.execute("DELETE FROM underage_users WHERE id=?", (str(user_id),))
+                conn.commit()
+        logging.info(f"Removed underage user: {user_id}")
+    except sqlite3.Error as e:
+        logging.error(f"Database error in remove_underage_user: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error in remove_underage_user: {e}")
+
+def is_underage(user_id):
+    try:
+        with closing(sqlite3.connect('users.db')) as conn:
+            with closing(conn.cursor()) as c:
+                c.execute("SELECT * FROM underage_users WHERE id=?", (str(user_id),))
+                result = c.fetchone()
+        return result is not None
+    except sqlite3.Error as e:
+        logging.error(f"Database error in is_underage: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error in is_underage: {e}")
+    return False
+
+# 5. Permission Management
+def has_allowed_role():
+    async def predicate(ctx):
+        return any(role.id in ALLOWED_ROLE_IDS for role in ctx.author.roles)
+    return commands.check(predicate)
+
+ADULT_ONLY_CHANNEL_ID = 1191075004285202503
+
+@bot.event
+async def on_member_join(member):
+    try:
+        await member.send("Welcome to the server! Please enter your age to get access to the appropriate channels.")
+        
+        def check(m):
+            return m.author == member and isinstance(m.channel, discord.DMChannel)
+        
+        response = await bot.wait_for('message', timeout=60.0, check=check)
+        age, age_status = validate_age(response.content)
+        logging.info(f"Age validation result: age={age}, status={age_status}")
+
+        account_creation = member.created_at.isoformat()
+        join_date = member.joined_at.isoformat()
+
+        if age_status == "underage":
+            logging.info(f"Adding underage user: id={member.id}, name={member.name}, age={age}")
+            add_underage_user(member.id, member.name, age, account_creation, join_date)
+            
+            # Restrict access to adult-only channel
+            adult_channel = member.guild.get_channel(ADULT_ONLY_CHANNEL_ID)
+            if adult_channel:
+                await adult_channel.set_permissions(member, read_messages=False, send_messages=False)
+                logging.info(f"Restricted access to adult-only channel for underage user: {member.id}")
+            
+            await member.send(f"Your age ({age}) has been recorded. As you are under 18, your access to certain channels will be restricted.")
+        else:
+            remove_underage_user(member.id)
+            await member.send(f"Your age ({age}) has been recorded. You have full access to the server.")
+
+        logging.info(f"User {member.id} joined and was verified as {age_status}")
+    except ValueError as e:
+        logging.error(f"ValueError in age verification: {str(e)}")
+        await member.send(f"Age verification failed: {str(e)}")
+    except asyncio.TimeoutError:
+        logging.error("Timeout in age verification")
+        await member.send("You took too long to respond. Please try again later.")
+    except Exception as e:
+        error_message = handle_error(e, "in on_member_join")
+        logging.error(f"Unexpected error in on_member_join: {str(e)}")
+        await member.send(error_message)
+
+@bot.command(name='manualverify', aliases=['mv'])
+async def manualverify(ctx, member: discord.Member):
+    if is_underage(member.id):
+        await ctx.send(f"{member.mention} is already verified as underage.")
+        return
+
+    await ctx.send(f"Sending age verification to {member.mention}.")
+
+    try:
+        await member.send("Please enter your age to verify.")
+
+        def check(m):
+            return m.author == member and isinstance(m.channel, discord.DMChannel)
+
+        response = await bot.wait_for('message', timeout=60.0, check=check)
+        age, age_status = validate_age(response.content)
+
+        account_creation = member.created_at.isoformat()
+        join_date = member.joined_at.isoformat()
+
+        adult_channel = ctx.guild.get_channel(ADULT_ONLY_CHANNEL_ID)
+
+        if age_status == "underage":
+            add_underage_user(member.id, member.name, age, account_creation, join_date)
+            await member.send(f"Your age ({age}) has been recorded. As you are under 18, your access to certain channels will be restricted.")
+            await ctx.send(f"{member.mention} is now marked as underage.")
+            
+            if adult_channel:
+                await adult_channel.set_permissions(member, read_messages=False, send_messages=False)
+                logging.info(f"Restricted access to adult-only channel for underage user: {member.id}")
+            
+            logging.info(f"User {member.id} manually verified as underage by {ctx.author.id}")
+        else:
+            remove_underage_user(member.id)
+            await member.send(f"Your age ({age}) has been recorded. You have full access to the server.")
+            await ctx.send(f"{member.mention} is verified as not underage.")
+            
+            if adult_channel:
+                await adult_channel.set_permissions(member, overwrite=None)
+                logging.info(f"Removed restrictions from adult-only channel for user: {member.id}")
+            
+            logging.info(f"User {member.id} manually verified as of age by {ctx.author.id}")
+
+    except asyncio.TimeoutError:
+        await member.send("You took too long to respond. Please try again later.")
+    except Exception as e:
+        error_message = handle_error(e, "in manualverify command")
+        await member.send(error_message)
+        await ctx.send("An error occurred during verification. Please try again later.")
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CheckFailure):
+        await ctx.send("You don't have permission to use this command.")
+    else:
+        error_message = handle_error(error, "in command execution")
+        await ctx.send(error_message)
+
+@bot.command()
+async def gotcha(ctx):
+    """Destinys Qoute"""
+    await ctx.send('Anything Else?')
+
+@bot.command()
+async def test1(ctx):
+    """My Jokes"""
+    await ctx.send('I cant wait to see what cosmic horrors I will face in NeoPunkFMs Discord')
+
+# YouTube API setup
+youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+
+def get_latest_video_id():
+    try:
+        request = youtube.search().list(
+            part="id,snippet",
+            channelId=YOUTUBE_CHANNEL_ID,
+            type="video",
+            order="date",
+            maxResults=1
+        )
+        response = request.execute()
+        if 'items' in response and response['items']:
+            return response['items'][0]['id']['videoId']
+    except Exception as e:
+        logging.error(f"Error fetching latest video: {str(e)}")
+    return None
+
+@tasks.loop(minutes=5)  # Check every 5 minutes
+async def check_for_new_videos():
+    try:
+        with open('last_video.json', 'r') as f:
+            data = json.load(f)
+            last_video_id = data['last_video_id']
+    except FileNotFoundError:
+        last_video_id = None
+
+    latest_video_id = get_latest_video_id()
+
+    if latest_video_id and latest_video_id != last_video_id:
+        channel = bot.get_channel(DISCORD_CHANNEL_ID)
+        if channel:
+            await channel.send(f"New video uploaded! https://www.youtube.com/watch?v={latest_video_id}")
+            logging.info(f"New video posted: {latest_video_id}")
+        
+        with open('last_video.json', 'w') as f:
+            json.dump({'last_video_id': latest_video_id}, f)
+
+@bot.event
+async def on_ready():
+    logging.info(f'Logged in as {bot.user.name}')
+    check_for_new_videos.start()
+
+@bot.command(name='testchannel')
+@commands.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
+async def test_channel(ctx):
+    try:
+        channel = bot.get_channel(DISCORD_CHANNEL_ID)
+        if channel:
+            await channel.send("This is a test message from your new overlords!")
+            await ctx.send(f"Test message sent to channel: {channel.name}")
+            logging.info(f"Test message sent to channel: {channel.name}")
+        else:
+            await ctx.send(f"Could not find channel with ID: {DISCORD_CHANNEL_ID}")
+            logging.warning(f"Could not find channel with ID: {DISCORD_CHANNEL_ID}")
+    except Exception as e:
+        await ctx.send(f"An error occurred: {str(e)}")
+        logging.error(f"An error occurred in test_channel command: {str(e)}", exc_info=True)
+
+@bot.command(name='checkyoutube')
+@commands.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
+async def check_youtube(ctx):
+    latest_video_id = get_latest_video_id()
+    if latest_video_id:
+        await ctx.send(f"Latest video: https://www.youtube.com/watch?v={latest_video_id}")
+    else:
+        await ctx.send("Couldn't fetch the latest video.")
+
+@bot.command(aliases=['h'])
+async def help(ctx):
+    hlpembed = discord.Embed(title="Help Menu", colour=discord.Colour.blue())
+    hlpembed.add_field(name="snipe / s", value="This snipes the user's last message", inline=False)
+    hlpembed.add_field(name="ex:", value=" .snipe", inline=False)
+    hlpembed.add_field(name="manualverify / mv", value="This sends the age verification to users who may not have had to do it. This has to be done individually", inline=False)
+    hlpembed.add_field(name="ex:", value=" ./mv @GT", inline=False)
+    hlpembed.add_field(name="help / h", value="This displays the help menu.", inline=False)
+    hlpembed.add_field(name="ex:", value=" .help", inline=False)
+    hlpembed.add_field(name="testchannel", value="Tests sending a message to the specified channel", inline=False)
+    hlpembed.add_field(name="ex:", value=" ./testchannel", inline=False)
+    hlpembed.add_field(name="gotcha", value="Destiny's Quote", inline=False)
+    hlpembed.add_field(name="ex:", value=" ./gotcha", inline=False)
+    hlpembed.add_field(name="test1", value="My Jokes", inline=False)
+    hlpembed.add_field(name="ex:", value=" ./test1", inline=False)
+    hlpembed.add_field(name="checkyoutube", value="Checks and displays the latest YouTube video", inline=False)
+    hlpembed.add_field(name="ex:", value=" ./checkyoutube", inline=False)
+    hlpembed.add_field(name="chat", value="Engage in a conversation with Gemini AI", inline=False)
+    hlpembed.add_field(name="ex:", value=" ./chat Tell me about the future of AI", inline=False)
+    await ctx.send(embed=hlpembed)
+
+# Configure Gemini
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-pro')
+
+@bot.command(name='chat')
+@commands.cooldown(1, 10, commands.BucketType.user)  # 1 use per 10 seconds per user
+async def chat_with_gemini(ctx, *, message):
+    if len(message) > 500:  # Adjust this limit as needed
+        await ctx.send("Your message is too long. Please keep it under 500 characters.")
+        return
+
+    try:
+        response = model.generate_content(message)
+        await ctx.send(response.text[:2000])  # Discord has a 2000 character limit
+    except Exception as e:
+        logging.error(f"Error in Gemini chat: {str(e)}")
+        await ctx.send("Sorry, I encountered an error while processing your request.")
+
+@chat_with_gemini.error
+async def chat_error(ctx, error):
+    if isinstance(error, commands.CommandOnCooldown):
+        await ctx.send(f"This command is on cooldown. Try again in {error.retry_after:.2f} seconds.")
+
+init_db()
+bot.run(BOT_TOKEN)
