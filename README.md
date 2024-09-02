@@ -1,85 +1,96 @@
-# NeoPunkXM Bot v1.0.2
+# NeoPunkXM Discord Bot
 
-## Overview
+![GitHub Release](https://img.shields.io/github/v/release/grandt0ur/Omnipunk)
+![Py-Cord Version](https://img.shields.io/pypi/v/py-cord)
+![Reddit User Karma](https://img.shields.io/reddit/user-karma/combined/NeoUnmei?style=social)
+![GitHub repo size](https://img.shields.io/github/repo-size/metalgearsolid2/Omnipunk)
 
-NeoPunkXM Bot is a versatile Discord bot designed to enhance your server with a variety of features, including user management, announcements, and miscellaneous fun commands. This release includes several key functionalities and improvements to make your server management more efficient and engaging.
+NeoPunkXM is a Discord bot designed to manage age verification, provide various utility commands, and post YouTube video updates to a specified channel.
 
-## Key Features
+## Features
 
-### User Management
-- **Manual Verification**: Allows administrators to manually verify users' ages and manage access to age-restricted channels.
-  - **Command**: `./manualverify @user`
-  - **Description**: Sends an age verification prompt to the specified user.
+- **Age Verification**: Automatically and manually verify user ages.
+- **Content Restriction**: Restrict adult content for underage users.
+- **YouTube Integration**: Post YouTube video updates to a specified channel.
+- **Utility Commands**: Various utility and fun commands.
 
-### Announcements
-- **Send Announcements**: Allows users with specific roles to send announcements to any text channel in the server.
-  - **Command**: `./announce #channel <message>`
-  - **Description**: Sends an announcement to the specified channel as an embed, mentioning the user who sent it.
-  - **Roles Required**: `NeoPunkFM`, `NPFM Affiliate`, `Neo-Engineer`
+## Setup
 
-### Miscellaneous
-- **Gotcha**: A fun command that sends a predefined message.
-  - **Command**: `./gotcha`
-  - **Description**: Sends a fun message to the channel.
-  
-- **Test1**: Another fun command for sending a predefined joke.
-  - **Command**: `./test1`
-  - **Description**: Sends a joke to the channel.
-
-- **Check YouTube**: Checks and displays the latest YouTube video from a specified channel.
-  - **Command**: `./checkyoutube`
-  - **Description**: Displays the latest YouTube video link.
-  - **Roles Required**: `NeoPunkFM`, `NPFM Affiliate`, `Neo-Engineer`
-
-### Help Command
-- **Help Menu**: Provides a detailed help menu with all available commands, grouped into categories.
-  - **Command**: `./help` or `./h`
-  - **Description**: Displays the help menu with command descriptions and usage.
-
-## Installation
-
-1. Clone the repository:
+1. **Clone this repository** to your local machine:
    ```bash
    git clone https://github.com/yourusername/neopunkxm-bot.git
    cd neopunkxm-bot
    ```
 
-2. Install the required dependencies:
+2. **Create a virtual environment and activate it**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+
+3. **Install the required dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Set up your `.env` file with the necessary environment variables:
-   ```
+4. **Create a `.env` file** in the root directory with the following content:
+   ```env
    BOT_TOKEN=your_discord_bot_token
-   ANNOUNCEMENT_CHANNEL_ID=your_announcement_channel_id
+   YOUTUBE_API_KEY=your_youtube_api_key
+   YOUTUBE_CHANNEL_ID=your_youtube_channel_id
+   DISCORD_CHANNEL_ID=your_discord_channel_id
    ```
+   Replace the placeholders with your actual values.
 
-4. Run the bot:
+5. **Run the bot**:
    ```bash
-   python bot.py
+   python bot2.py
    ```
 
-## Requirements
+## Commands
 
-- Python 3.8+
-- `discord.py`
-- `python-dotenv`
-- `google-api-python-client`
-- `matplotlib`
-- `aiohttp`
+- `./snipe` or `./s`: Retrieves the last deleted message in the channel.
+- `./manualverify` or `./mv`: Manually triggers age verification for a user.
+- `./help` or `./h`: Displays the help menu with all available commands.
+- `./gotcha`: Displays Destiny's quote.
+- `./test1`: Displays a joke.
+- `./checkyoutube`: Manually checks and displays the latest YouTube video from the specified channel.
 
-## Changelog
+## Permissions
 
-### v1.0.2
-- Improved the `announce` command to allow sending announcements to any specified channel.
-- Updated the help command to reflect current commands.
-- Removed deprecated and unused commands for a cleaner codebase.
-- Fixed an issue with the `announce` command where the `avatar_url` attribute caused an error.
+Most commands are restricted to users with the following roles:
+- **NeoPunkFM**
+- **NPFM Affiliate**
+- **Neo-Engineer**
 
-### v1.0.1
-- Minor bug fixes and performance improvements.
+## Age Verification
 
-### v1.0.0
-- Initial release with core features:
-  - User management with manual
+- **Automatic Verification**: New members are automatically prompted for age verification upon joining.
+- **Content Restriction**: Users under 18 are restricted from accessing adult-only channels.
+- **Manual Verification**: Can be triggered by moderators using the `./manualverify` command.
+
+## YouTube Integration
+
+- **Automatic Checks**: The bot automatically checks for new videos every 5 minutes.
+- **Manual Checks**: Use `./checkyoutube` to manually check for the latest video.
+
+## Logging
+
+The bot logs important events and errors to both the console and a `bot.log` file.
+
+## Database
+
+User age information is stored in an SQLite database (`users.db`) for persistent age verification.
+
+## Contributing
+
+Contributions to improve the bot are welcome. Please follow these steps:
+1. Fork the repository
+2. Create a new branch for your feature
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
