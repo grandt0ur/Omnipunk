@@ -1,6 +1,6 @@
 # NeoPunkXM Discord Bot
 
-![GitHub Release](https://img.shields.io/github/v/release/grandt0ur/Omnipunk)
+![GitHub Release](https://img.shields.io/github/v/releases/grandt0ur/Omnipunk)
 ![Py-Cord Version](https://img.shields.io/pypi/v/py-cord)
 ![Reddit User Karma](https://img.shields.io/reddit/user-karma/combined/NeoUnmei?style=social)
 ![GitHub repo size](https://img.shields.io/github/repo-size/metalgearsolid2/Omnipunk)
