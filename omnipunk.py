@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands, tasks
-import sqlite3
 import asyncio
 from datetime import datetime
 import os
@@ -8,12 +7,9 @@ from dotenv import load_dotenv
 import logging
 from contextlib import closing
 import re
-from googleapiclient.discovery import build
-import json
-import pylast
-import matplotlib.pyplot as plt
-import io
-import aiohttp
+import mysql.connector
+from mysql.connector import Error
+import random
 
 # Load environment variables
 load_dotenv()
@@ -34,7 +30,58 @@ intents.members = True
 intents.message_content = True
 
 bot = commands.Bot(command_prefix=commands.when_mentioned_or("./"), intents=intents)
+
+# Remove the default help command
 bot.remove_command('help')
+
+@bot.command(name='help', aliases=['h'])
+async def custom_help(ctx, command_name: str = None):
+    """Display help information for commands"""
+    if command_name is None:
+        # General help message
+        embed = discord.Embed(title="Bot Commands", description="Here are the available commands:", color=discord.Color.blue())
+        
+        # Regular User Commands
+        user_commands = """
+        `./help` or `./h`: Display this help message
+        `./poll #channel "Question" "Option1" "Option2" ...`: Create a poll in the specified channel (ADMIN ONLY)
+        `./pollresults <message_id> [#channel]`: Display the results of a poll (ADMIN ONLY)
+        `./vote <poll_id> <option_number>`: Vote on a poll
+        `./punch <@user>`: Punch another user
+        `./kill <@user>`: Virtually kill another user
+        """
+        embed.add_field(name="User Commands", value=user_commands, inline=False)
+    else:
+        # Command-specific help
+        command = bot.get_command(command_name)
+        if command is None:
+            await ctx.send(f"No command called '{command_name}' found.")
+            return
+
+        embed = discord.Embed(title=f"Help: {command.name}", color=discord.Color.green())
+        embed.add_field(name="Description", value=command.help or "No description available.", inline=False)
+        
+        usage = f"{ctx.prefix}{command.name}"
+        if command.signature:
+            usage += f" {command.signature}"
+        embed.add_field(name="Usage", value=f"`{usage}`", inline=False)
+
+        if command.aliases:
+            embed.add_field(name="Aliases", value=", ".join(command.aliases), inline=False)
+        
+        # Check if it's an admin command
+        if any(isinstance(check, commands.has_any_role) for check in command.checks):
+            embed.add_field(name="Note", value="This is an admin command and requires specific roles to use.", inline=False)
+
+    await ctx.send(embed=embed)
+
+@custom_help.error
+async def custom_help_error(ctx, error):
+    if isinstance(error, commands.BadArgument):
+        await ctx.send("Invalid command name. Please use `./help` to see all available commands.")
+    else:
+        await ctx.send("An error occurred while trying to display the help message. Please try again later.")
+        print(f"Error in help command: {error}")
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO, 
@@ -72,63 +119,120 @@ def handle_error(error, context=""):
     logging.error(error_message)
     return "An unexpected error occurred. Please try again later or contact an administrator."
 
-# 4. Database Security
-def init_db():
+# Database connection details
+DB_HOST = "us.mysql.db.bot-hosting.net"
+DB_PORT = 3306
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_NAME = "s148168_users"
+
+def create_db_connection():
     try:
-        with closing(sqlite3.connect('users.db')) as conn:
-            with closing(conn.cursor()) as c:
-                c.execute('''CREATE TABLE IF NOT EXISTS underage_users
-                             (id TEXT PRIMARY KEY, 
-                              name TEXT, 
-                              age INTEGER, 
-                              account_creation TEXT, 
-                              join_date TEXT)''')
-                conn.commit()
-        logging.info("Database initialized successfully")
-    except sqlite3.Error as e:
-        logging.error(f"Database initialization error: {e}")
-    except Exception as e:
-        logging.error(f"Unexpected error during database initialization: {e}")
+        connection = mysql.connector.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME
+        )
+        return connection
+    except Error as e:
+        print(f"Error connecting to MySQL database: {e}")
+        return None
+
+def create_underage_users_table():
+    connection = create_db_connection()
+    if connection is None:
+        return
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS underage_users (
+            id VARCHAR(255) PRIMARY KEY,
+            name VARCHAR(255),
+            age INT,
+            account_creation DATETIME,
+            join_date DATETIME
+        )
+        """)
+        connection.commit()
+        print("Underage users table created successfully")
+    except Error as e:
+        print(f"Error creating underage users table: {e}")
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
 
 def add_underage_user(user_id, name, age, account_creation, join_date):
+    connection = create_db_connection()
+    if connection is None:
+        return
+
     try:
-        with closing(sqlite3.connect('users.db')) as conn:
-            with closing(conn.cursor()) as c:
-                c.execute("""INSERT OR REPLACE INTO underage_users 
-                             (id, name, age, account_creation, join_date) 
-                             VALUES (?, ?, ?, ?, ?)""",
-                          (str(user_id), sanitize_input(name), age, account_creation, join_date))
-                conn.commit()
-        logging.info(f"Added underage user: {user_id}")
-    except sqlite3.Error as e:
-        logging.error(f"Database error in add_underage_user: {e}")
-    except Exception as e:
-        logging.error(f"Unexpected error in add_underage_user: {e}")
+        cursor = connection.cursor()
+        
+        # Convert datetime strings to MySQL compatible format
+        account_creation = datetime.fromisoformat(account_creation).strftime('%Y-%m-%d %H:%M:%S')
+        join_date = datetime.fromisoformat(join_date).strftime('%Y-%m-%d %H:%M:%S')
+        
+        query = """INSERT INTO underage_users 
+                   (id, name, age, account_creation, join_date) 
+                   VALUES (%s, %s, %s, %s, %s)
+                   ON DUPLICATE KEY UPDATE 
+                   name=%s, age=%s, account_creation=%s, join_date=%s"""
+        values = (str(user_id), name, age, account_creation, join_date,
+                  name, age, account_creation, join_date)
+        cursor.execute(query, values)
+        connection.commit()
+        print(f"Added underage user: {user_id}")
+    except Error as e:
+        print(f"Error adding underage user: {e}")
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
 
 def remove_underage_user(user_id):
+    connection = create_db_connection()
+    if connection is None:
+        return
+
     try:
-        with closing(sqlite3.connect('users.db')) as conn:
-            with closing(conn.cursor()) as c:
-                c.execute("DELETE FROM underage_users WHERE id=?", (str(user_id),))
-                conn.commit()
-        logging.info(f"Removed underage user: {user_id}")
-    except sqlite3.Error as e:
-        logging.error(f"Database error in remove_underage_user: {e}")
-    except Exception as e:
-        logging.error(f"Unexpected error in remove_underage_user: {e}")
+        cursor = connection.cursor()
+        query = "DELETE FROM underage_users WHERE id = %s"
+        cursor.execute(query, (str(user_id),))
+        connection.commit()
+        print(f"Removed underage user: {user_id}")
+    except Error as e:
+        print(f"Error removing underage user: {e}")
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
 
 def is_underage(user_id):
+    connection = create_db_connection()
+    if connection is None:
+        return False
+
     try:
-        with closing(sqlite3.connect('users.db')) as conn:
-            with closing(conn.cursor()) as c:
-                c.execute("SELECT * FROM underage_users WHERE id=?", (str(user_id),))
-                result = c.fetchone()
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT * FROM underage_users WHERE id = %s"
+        cursor.execute(query, (str(user_id),))
+        result = cursor.fetchone()
         return result is not None
-    except sqlite3.Error as e:
-        logging.error(f"Database error in is_underage: {e}")
-    except Exception as e:
-        logging.error(f"Unexpected error in is_underage: {e}")
-    return False
+    except Error as e:
+        print(f"Error checking underage status: {e}")
+        return False
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+# Call this function when your bot starts up
+create_underage_users_table()
 
 # 5. Permission Management
 def has_allowed_role():
@@ -181,6 +285,7 @@ async def on_member_join(member):
         await member.send(error_message)
 
 @bot.command(name='manualverify', aliases=['mv'])
+@commands.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
 async def manualverify(ctx, member: discord.Member):
     """Sends the age verification to users who may not have had to do it"""
     if is_underage(member.id):
@@ -249,108 +354,88 @@ async def test1(ctx):
     """My Jokes"""
     await ctx.send('I cant wait to see what cosmic horrors I will face in NeoPunkFMs Discord')
 
-# YouTube API setup
-youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
-
-def get_latest_video_id():
-    try:
-        request = youtube.search().list(
-            part="id,snippet",
-            channelId=YOUTUBE_CHANNEL_ID,
-            type="video",
-            order="date",
-            maxResults=1
-        )
-        response = request.execute()
-        if 'items' in response and response['items']:
-            return response['items'][0]['id']['videoId']
-    except Exception as e:
-        logging.error(f"Error fetching latest video: {str(e)}")
-    return None
-
-@tasks.loop(minutes=5)  # Check every 5 minutes
-async def check_for_new_videos():
-    try:
-        with open('last_video.json', 'r') as f:
-            data = json.load(f)
-            last_video_id = data['last_video_id']
-    except FileNotFoundError:
-        last_video_id = None
-
-    latest_video_id = get_latest_video_id()
-
-    if latest_video_id and latest_video_id != last_video_id:
-        channel = bot.get_channel(DISCORD_CHANNEL_ID)
-        if channel:
-            await channel.send(f"New video uploaded! https://www.youtube.com/watch?v={latest_video_id}")
-            logging.info(f"New video posted: {latest_video_id}")
-        
-        with open('last_video.json', 'w') as f:
-            json.dump({'last_video_id': latest_video_id}, f)
-
-@bot.event
-async def on_ready():
-    logging.info(f'Logged in as {bot.user.name}')
-    check_for_new_videos.start()
-
-@bot.command(name='checkyoutube')
-@commands.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
-async def check_youtube(ctx):
-    """Checks and displays the latest YouTube video"""
-    latest_video_id = get_latest_video_id()
-    if latest_video_id:
-        await ctx.send(f"Latest video: https://www.youtube.com/watch?v={latest_video_id}")
-    else:
-        await ctx.send("Couldn't fetch the latest video.")
-
-@bot.command(name='announce')
-@commands.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
-async def announce(ctx, channel: discord.TextChannel, *, message: str):
-    """Send an announcement to a specified channel"""
-    if not channel:
-        await ctx.send("Channel not found.")
+@bot.command(name='underage_list')
+@commands.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')  # Adjust roles as needed
+async def underage_list(ctx):
+    """Retrieve and display a list of underage users from the database."""
+    connection = create_db_connection()
+    if connection is None:
+        await ctx.send("Failed to connect to the database. Please try again later.")
         return
 
-    embed = discord.Embed(title="Announcement", description=message, color=discord.Color.blue())
-    embed.set_footer(text=f"Sent by {ctx.author.display_name}", icon_url=ctx.author.avatar.url)
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT id, name, age FROM underage_users ORDER BY name"
+        cursor.execute(query)
+        results = cursor.fetchall()
 
-    await channel.send(embed=embed)
-    await ctx.send(f"Announcement sent successfully to {channel.mention}.")
+        if not results:
+            await ctx.send("No underage users found in the database.")
+            return
 
-@announce.error
-async def announce_error(ctx, error):
+        # Create an embed to display the results
+        embed = discord.Embed(title="Underage Users List", color=discord.Color.blue())
+        embed.set_footer(text=f"Total underage users: {len(results)}")
+
+        # Split the results into chunks of 25 (Discord's field limit per embed)
+        chunks = [results[i:i + 25] for i in range(0, len(results), 25)]
+
+        for i, chunk in enumerate(chunks):
+            field_value = "\n".join([f"**{user['name']}** (ID: {user['id']}, Age: {user['age']})" for user in chunk])
+            embed.add_field(name=f"Users {i*25+1}-{i*25+len(chunk)}", value=field_value, inline=False)
+
+        await ctx.send(embed=embed)
+
+    except Error as e:
+        print(f"Error retrieving underage users: {e}")
+        await ctx.send("An error occurred while retrieving the underage users list.")
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+@underage_list.error
+async def underage_list_error(ctx, error):
     if isinstance(error, commands.MissingAnyRole):
-        await ctx.send("You do not have the required role to use this command.")
-    elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("Please provide a channel and a message to announce. Usage: `./announce #channel <message>`")
+        await ctx.send("You don't have permission to use this command.")
     else:
         await ctx.send(f"An error occurred: {str(error)}")
 
-@bot.command(name='help', aliases=['h'])
-async def help(ctx):
-    """This displays the help menu."""
-    embed = discord.Embed(title="NeoPunkXM Bot Help", description="Here are the available commands:", color=discord.Color.purple())
-    
-    command_groups = {
-        "General": ["help", "snipe"],
-        "User Management": ["manualverify"],
-        "Announcements": ["announce"],
-        "Miscellaneous": ["gotcha", "test1", "checkyoutube"]
-    }
-    
-    for group, commands_list in command_groups.items():
-        commands_info = []
-        for command in commands_list:
-            cmd = bot.get_command(command)
-            if cmd:
-                aliases = f" (aliases: {', '.join(cmd.aliases)})" if cmd.aliases else ""
-                commands_info.append(f"`{cmd.name}{aliases}`: {cmd.help or 'No description available.'}")
-        
-        if commands_info:
-            embed.add_field(name=group, value="\n".join(commands_info), inline=False)
-    
-    embed.set_footer(text="Use ./help <command> for more info on a specific command.")
-    await ctx.send(embed=embed)
+# You might want to replace this with actual image URLs
+PUNCH_IMAGES = [
+    "https://example.com/punch1.gif",
+    "https://example.com/punch2.gif",
+    # Add more punch image URLs here
+]
 
-init_db()
+@bot.command()
+async def punch(ctx, member: discord.Member):
+    """Punch another user"""
+    if member == ctx.author:
+        punch_image = random.choice(PUNCH_IMAGES)
+        embed = discord.Embed(colour=discord.Colour.blue())
+        embed.set_image(url=punch_image)
+        await ctx.send(f"{ctx.author.mention} punched themselves!", embed=embed)
+    else:
+        await ctx.send(f"{member.mention} got knocked out by {ctx.author.mention}!")
+    await ctx.message.delete()
+
+@bot.command()
+async def kill(ctx, member: discord.Member):
+    """Virtually kill another user"""
+    if member == ctx.author:
+        await ctx.send(f"{ctx.author.mention} committed seppuku!")
+    else:
+        await ctx.send(f"{member.mention} was killed by {ctx.author.mention}!")
+    await ctx.message.delete()
+
+# Error handling for these commands
+@punch.error
+@kill.error
+async def interaction_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("You need to mention a user to use this command!")
+    elif isinstance(error, commands.MemberNotFound):
+        await ctx.send("Couldn't find that user. Make sure you're mentioning a valid user.")
+
 bot.run(BOT_TOKEN)
