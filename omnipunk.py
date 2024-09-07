@@ -10,6 +10,7 @@ import mysql.connector
 from mysql.connector import Error
 import random
 import re
+from collections import defaultdict
 
 # Load environment variables
 load_dotenv()
@@ -36,6 +37,7 @@ class MyBot(commands.Bot):
 
     async def setup_hook(self):
         await self.tree.sync()
+        print("Command tree synced!")
 
 bot = MyBot()
 
@@ -169,6 +171,7 @@ async def help_command(interaction: discord.Interaction, command_name: str = Non
         `/manualverify`: Manually verify a user's age (ADMIN ONLY)
         `/underage_list`: List underage users (ADMIN ONLY)
         `/announce`: Send an announcement (ADMIN ONLY)
+        `/snipe`: Show the last deleted message in the channel
         """
         embed.add_field(name="User Commands", value=user_commands, inline=False)
     else:
@@ -361,33 +364,32 @@ async def underage_list(interaction: discord.Interaction):
 
 
 
-@bot.tree.command(name='snipe', description="Show the last deleted message in the channel")
-@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.channel.id))
-async def snipe(interaction: discord.Interaction):
+# Store the last deleted message for each channel
+last_deleted_messages = defaultdict(lambda: None)
+
+@bot.event
+async def on_message_delete(message):
+    last_deleted_messages[message.channel.id] = message
+
+@bot.hybrid_command(name="snipe", description="Show the last deleted message in the channel")
+async def snipe(ctx):
     """Show the last deleted message in the channel."""
-    await last_deleted(interaction)
-
-# Error handling for cooldown
-@bot.tree.command(name='last_deleted', description="Show the last deleted message in the channel")
-@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.channel.id))
-async def last_deleted(interaction: discord.Interaction):
-    """Show the last deleted message in the channel."""
-    # Implement the last_deleted functionality here
-    pass
-
-# ... existing snipe command ...
-
-@last_deleted.error
-@snipe.error
-async def snipe_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(f"This command is on cooldown. Try again in {error.retry_after:.2f} seconds.", ephemeral=True)
+    deleted_message = last_deleted_messages[ctx.channel.id]
+    if deleted_message:
+        embed = discord.Embed(description=deleted_message.content, color=discord.Color.red())
+        embed.set_author(name=deleted_message.author.name, icon_url=deleted_message.author.avatar.url)
+        embed.timestamp = deleted_message.created_at
+        await ctx.send(embed=embed)
     else:
-        await interaction.response.send_message("An error occurred while executing this command.", ephemeral=True)
+        await ctx.send("No recently deleted messages found in this channel.")
+
+@snipe.error
+async def snipe_error(ctx, error):
+    if isinstance(error, commands.CommandOnCooldown):
+        await ctx.send(f"This command is on cooldown. Try again in {error.retry_after:.2f} seconds.", ephemeral=True)
+    else:
+        await ctx.send("An error occurred while executing this command.", ephemeral=True)
         logging.error(f"Error in snipe command: {error}")
-
-
-
 
 @bot.tree.command()
 @app_commands.checks.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
