@@ -359,6 +359,36 @@ async def underage_list(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
+
+
+@bot.tree.command(name='snipe', description="Show the last deleted message in the channel")
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.channel.id))
+async def snipe(interaction: discord.Interaction):
+    """Show the last deleted message in the channel."""
+    await last_deleted(interaction)
+
+# Error handling for cooldown
+@bot.tree.command(name='last_deleted', description="Show the last deleted message in the channel")
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.channel.id))
+async def last_deleted(interaction: discord.Interaction):
+    """Show the last deleted message in the channel."""
+    # Implement the last_deleted functionality here
+    pass
+
+# ... existing snipe command ...
+
+@last_deleted.error
+@snipe.error
+async def snipe_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        await interaction.response.send_message(f"This command is on cooldown. Try again in {error.retry_after:.2f} seconds.", ephemeral=True)
+    else:
+        await interaction.response.send_message("An error occurred while executing this command.", ephemeral=True)
+        logging.error(f"Error in snipe command: {error}")
+
+
+
+
 @bot.tree.command()
 @app_commands.checks.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
 @app_commands.describe(
