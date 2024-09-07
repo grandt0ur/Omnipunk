@@ -362,34 +362,31 @@ async def underage_list(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-
-
-# Store the last deleted message for each channel
 last_deleted_messages = defaultdict(lambda: None)
 
 @bot.event
 async def on_message_delete(message):
     last_deleted_messages[message.channel.id] = message
+    print(f"Message deleted in channel {message.channel.id}: {message.content}")
 
-@bot.hybrid_command(name="snipe", description="Show the last deleted message in the channel")
-async def snipe(ctx):
+@bot.tree.command(name="snipe", description="Show the last deleted message in the channel")
+async def snipe(interaction: discord.Interaction):
     """Show the last deleted message in the channel."""
-    deleted_message = last_deleted_messages[ctx.channel.id]
+    deleted_message = last_deleted_messages.get(interaction.channel.id)
     if deleted_message:
         embed = discord.Embed(description=deleted_message.content, color=discord.Color.red())
-        embed.set_author(name=deleted_message.author.name, icon_url=deleted_message.author.avatar.url)
+        embed.set_author(name=deleted_message.author.name, icon_url=deleted_message.author.display_avatar.url)
         embed.timestamp = deleted_message.created_at
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
     else:
-        await ctx.send("No recently deleted messages found in this channel.")
+        await interaction.response.send_message("No recently deleted messages found in this channel.")
 
-@snipe.error
-async def snipe_error(ctx, error):
-    if isinstance(error, commands.CommandOnCooldown):
-        await ctx.send(f"This command is on cooldown. Try again in {error.retry_after:.2f} seconds.", ephemeral=True)
-    else:
-        await ctx.send("An error occurred while executing this command.", ephemeral=True)
-        logging.error(f"Error in snipe command: {error}")
+# Sync command
+@bot.command()
+@commands.is_owner()
+async def sync(ctx):
+    synced = await bot.tree.sync()
+    await ctx.send(f"Synced {len(synced)} commands.")
 
 @bot.tree.command()
 @app_commands.checks.has_any_role('NeoPunkFM', 'NPFM Affiliate', 'Neo-Engineer')
