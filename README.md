@@ -102,6 +102,7 @@ Contributions to improve the bot are welcome. Please follow these steps:
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Updates
+- Fixed MySQL datetime error that was present
 - Added Snipe command
 - Added Slash/Application Command Integration
 ## Developed by GT
