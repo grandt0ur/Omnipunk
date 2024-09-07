@@ -103,15 +103,19 @@ def create_db_connection():
 def execute_db_query(query, params=None):
     connection = create_db_connection()
     if connection is None:
+        logging.error("Failed to create database connection")
         return None
 
     try:
         with connection.cursor(dictionary=True) as cursor:
             cursor.execute(query, params or ())
             if query.strip().upper().startswith('SELECT'):
-                return cursor.fetchall()
+                result = cursor.fetchall()
+                logging.info(f"Query executed successfully. Rows returned: {len(result)}")
+                return result
             else:
                 connection.commit()
+                logging.info(f"Query executed successfully. Rows affected: {cursor.rowcount}")
                 return cursor.rowcount
     except Error as e:
         logging.error(f"Database error: {e}")
@@ -130,17 +134,37 @@ def create_underage_users_table():
         join_date DATETIME
     )
     """
-    execute_db_query(query)
+    result = execute_db_query(query)
+    if result is not None:
+        logging.info("underage_users table created or already exists")
+    else:
+        logging.error("Failed to create underage_users table")
+
+# Call this function when your bot starts up
+create_underage_users_table()
+
 
 def add_underage_user(user_id, name, age, account_creation, join_date):
+    # Convert ISO format strings to datetime objects
+    account_creation_dt = datetime.fromisoformat(account_creation.replace('+00:00', ''))
+    join_date_dt = datetime.fromisoformat(join_date.replace('+00:00', ''))
+    
+    # Format datetime objects to MySQL-compatible format
+    account_creation_formatted = account_creation_dt.strftime('%Y-%m-%d %H:%M:%S')
+    join_date_formatted = join_date_dt.strftime('%Y-%m-%d %H:%M:%S')
+
     query = """INSERT INTO underage_users 
                (id, name, age, account_creation, join_date) 
                VALUES (%s, %s, %s, %s, %s)
                ON DUPLICATE KEY UPDATE 
                name=%s, age=%s, account_creation=%s, join_date=%s"""
-    params = (str(user_id), name, age, account_creation, join_date,
-              name, age, account_creation, join_date)
-    execute_db_query(query, params)
+    params = (str(user_id), name, age, account_creation_formatted, join_date_formatted,
+              name, age, account_creation_formatted, join_date_formatted)
+    result = execute_db_query(query, params)
+    if result is None or result == 0:
+        logging.error(f"Failed to add underage user: {user_id}")
+    else:
+        logging.info(f"Successfully added/updated underage user: {user_id}")
 
 def remove_underage_user(user_id):
     query = "DELETE FROM underage_users WHERE id = %s"
@@ -310,6 +334,7 @@ async def manualverify(interaction: discord.Interaction, member: discord.Member)
 
         if age_status == "underage":
             add_underage_user(member.id, member.name, age, account_creation, join_date)
+            logging.info(f"Attempting to add underage user: {member.id}, {member.name}, {age}")
             await member.send(f"Your age ({age}) has been recorded. As you are under 18, your access to certain channels will be restricted.")
             await interaction.followup.send(f"{member.mention} is now marked as underage.", ephemeral=True)
             
