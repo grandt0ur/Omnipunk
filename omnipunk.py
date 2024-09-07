@@ -74,11 +74,15 @@ def handle_error(error, context=""):
     return "An unexpected error occurred. Please try again later or contact an administrator."
 
 # Database connection details
-DB_HOST = os.getenv('DB_HOST', "us.mysql.db.bot-hosting.net")
-DB_PORT = int(os.getenv('DB_PORT', 3306))
+DB_HOST = os.getenv('DB_HOST')
+DB_PORT = int(os.getenv('DB_PORT'))
 DB_USER = os.getenv('DB_USER')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
-DB_NAME = os.getenv('DB_NAME', "s148168_users")
+DB_NAME = os.getenv('DB_NAME')
+
+# Validate that we have all necessary database information
+if not all([DB_HOST, DB_USER, DB_PASSWORD, DB_NAME]):
+    raise ValueError("Missing database connection information. Please check your .env file.")
 
 def create_db_connection():
     try:
