@@ -40,6 +40,11 @@ NeoPunkXM is a Discord bot designed to manage age verification, provide various 
    YOUTUBE_API_KEY=your_youtube_api_key
    YOUTUBE_CHANNEL_ID=your_youtube_channel_id
    DISCORD_CHANNEL_ID=your_discord_channel_id
+   DB_HOST=your_DB_HOST_Name
+   DB_PORT=your_DB_PORT_Name
+   DB_USER=your_DB_USER_Name
+   DB_PASSWORD=your_DB_PASSWORD
+   DB_NAME=your_DB_NAME
    ```
    Replace the placeholders with your actual values.
 
