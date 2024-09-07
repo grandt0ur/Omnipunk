@@ -102,7 +102,7 @@ Contributions to improve the bot are welcome. Please follow these steps:
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Updates
-
+- Added Snipe command
 - Added Slash/Application Command Integration
 ## Developed by GT
 ![Dev.to blog](https://img.shields.io/badge/dev.to-0A0A0A?style=for-the-badge&logo=dev.to&logoColor=white)](https://dev.to/destiny)
