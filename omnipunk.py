@@ -20,6 +20,8 @@ YOUTUBE_CHANNEL_ID = os.getenv('YOUTUBE_CHANNEL_ID')
 DISCORD_CHANNEL_ID = int(os.getenv('DISCORD_CHANNEL_ID', 0))
 ANNOUNCEMENT_CHANNEL_ID = int(os.getenv('ANNOUNCEMENT_CHANNEL_ID', 0))
 ADULT_ONLY_CHANNEL_ID = int(os.getenv('ADULT_ONLY_CHANNEL_ID', 0))
+REPORT_CHANNEL_ID = int(os.getenv('REPORT_CHANNEL_ID', 0))
+
 
 if not BOT_TOKEN:
     raise ValueError("No bot token found. Make sure to set it in your .env file.")
@@ -437,5 +439,124 @@ PUNCH_IMAGES = [
 
 POLL_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
 
-if __name__ == "__main__":
-    bot.run(BOT_TOKEN)
+# Get Guild ID from .env file
+GUILD_ID = int(os.getenv('GUILD_ID'))
+
+@bot.command()
+async def report(ctx, message_or_user: str = None, *, reason: str = None):
+    """
+    Report a user or message. Can be used in server channels or DMs.
+    Usage: 
+    - !report [user] [reason]
+    - !report [message_id] [reason]
+    - Reply to a message with: !report [reason]
+    """
+    reported_msg = None
+    user = None
+    guild = bot.get_guild(GUILD_ID)
+
+    if not guild:
+        await ctx.send("Error: Couldn't find the specified server. Please contact an administrator.")
+        return
+
+    if ctx.message.reference:
+        # If the command is used as a reply to a message
+        try:
+            reported_msg = await ctx.fetch_message(ctx.message.reference.message_id)
+            user = reported_msg.author
+        except discord.NotFound:
+            await ctx.send("Couldn't fetch the message you're replying to. It may have been deleted.")
+            return
+    elif message_or_user:
+        try:
+            # Check if the input is a valid message ID
+            message_id = int(message_or_user)
+            reported_msg = await find_message_by_id(guild, message_id)
+            if reported_msg:
+                user = reported_msg.author
+            else:
+                await ctx.send("Couldn't find a message with that ID. Make sure the ID is correct and the message is from the specified server.")
+                return
+        except ValueError:
+            # If not a message ID, treat it as a user mention or ID
+            try:
+                user = await bot.fetch_user(int(message_or_user))
+            except (ValueError, discord.NotFound):
+                try:
+                    user = await commands.UserConverter().convert(ctx, message_or_user)
+                except commands.UserNotFound:
+                    await ctx.send("Please provide a valid user mention, user ID, or message ID.")
+                    return
+
+    if not user:
+        await ctx.send("Please specify a user to report, provide a message ID, or use this command as a reply to a message.")
+        return
+
+    if not reason:
+        await ctx.send("Please provide a reason for the report.")
+        return
+
+    # Here you would typically send this information to a designated channel or store it in a database
+    report_channel = bot.get_channel(REPORT_CHANNEL_ID)
+    
+    embed = discord.Embed(title="New Report", color=discord.Color.red())
+    embed.add_field(name="Reported User", value=f"{user.name}#{user.discriminator} (ID: {user.id})", inline=False)
+    embed.add_field(name="Reported By", value=f"{ctx.author.name}#{ctx.author.discriminator} (ID: {ctx.author.id})", inline=False)
+    
+    if reported_msg:
+        embed.add_field(name="Reported Message", value=reported_msg.content[:1024], inline=False)
+        if len(reported_msg.content) > 1024:
+            embed.add_field(name="Reported Message (continued)", value=reported_msg.content[1024:], inline=False)
+        embed.add_field(name="Message ID", value=reported_msg.id, inline=False)
+        embed.add_field(name="Message Link", value=reported_msg.jump_url, inline=False)
+        embed.add_field(name="Channel", value=reported_msg.channel.name, inline=False)
+    
+    embed.add_field(name="Reason", value=reason, inline=False)
+    embed.add_field(name="Report Source", value="DM" if isinstance(ctx.channel, discord.DMChannel) else "Server Channel", inline=False)
+    embed.add_field(name="Server", value=guild.name, inline=False)
+
+    await report_channel.send(embed=embed)
+    await ctx.send("Thank you for your report. It has been submitted for review.")
+
+async def find_message_by_id(guild, message_id):
+    """
+    Search for a message by its ID in all channels of the given server.
+    """
+    for channel in guild.text_channels:
+        try:
+            message = await channel.fetch_message(message_id)
+            return message
+        except discord.NotFound:
+            continue
+    return None
+
+@bot.tree.command(name="report_info", description="Get information on how to report anonymously")
+async def report_info(interaction: discord.Interaction):
+    """Provides information on how to report anonymously and get message IDs."""
+    
+    instructions = (
+        "To report anonymously:\n\n"
+        "1. Send a DM to the bot with the following format:\n"
+        "   `!report [user_id or message_id] [reason]`\n\n"
+        "2. To get a user's ID, right-click their name and select 'Copy ID'. "
+        "You need to have Developer Mode enabled in Discord settings.\n\n"
+        "3. To get a message ID:\n"
+        "   - Enable Developer Mode in Discord settings (User Settings > App Settings > Advanced)\n"
+        "   - Right-click on the message and select 'Copy Message ID'\n\n"
+        "4. When reporting a message, use the message ID instead of the user ID.\n\n"
+        "Example:\n"
+        "`!report 123456789 Inappropriate behavior`\n\n"
+        "Remember, all reports are confidential and anonymous when sent via DM."
+    )
+
+    try:
+        await interaction.user.send(instructions)
+        await interaction.response.send_message("Instructions have been sent to your DMs.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("I couldn't send you a DM. Please check your privacy settings and try again.", ephemeral=True)
+
+@bot.event
+async def on_ready():
+    print(f'{bot.user} has connected to Discord!')
+
+bot.run(BOT_TOKEN)
