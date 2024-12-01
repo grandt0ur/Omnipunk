@@ -21,6 +21,7 @@ DISCORD_CHANNEL_ID = int(os.getenv('DISCORD_CHANNEL_ID', 0))
 ANNOUNCEMENT_CHANNEL_ID = int(os.getenv('ANNOUNCEMENT_CHANNEL_ID', 0))
 ADULT_ONLY_CHANNEL_ID = int(os.getenv('ADULT_ONLY_CHANNEL_ID', 0))
 REPORT_CHANNEL_ID = int(os.getenv('REPORT_CHANNEL_ID', 0))
+SUGGESTIONS_CHANNEL_ID = int(os.getenv('SUGGESTIONS_CHANNEL_ID'))
 
 
 if not BOT_TOKEN:
@@ -424,8 +425,22 @@ async def sync(ctx):
 async def announce(interaction: discord.Interaction, channel: discord.TextChannel, message: str):
     """Sends an announcement to the specified channel"""
     try:
-        await channel.send(message)
+        # Create an embed for the announcement
+        embed = discord.Embed(
+            title="📢 Announcement",
+            description=message,
+            color=discord.Color.blue(),
+            timestamp=interaction.created_at
+        )
+        
+        # Add author information
+        embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
+        embed.set_footer(text=f"Announcement by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+
+        # Send the embed
+        await channel.send(embed=embed)
         await interaction.response.send_message(f"Announcement sent to {channel.mention}", ephemeral=True)
+        
     except discord.Forbidden:
         await interaction.response.send_message("I don't have permission to send messages in that channel.", ephemeral=True)
     except Exception as e:
@@ -530,8 +545,8 @@ async def find_message_by_id(guild, message_id):
             continue
     return None
 
-@bot.tree.command(name="report_info", description="Get information on how to report anonymously")
-async def report_info(interaction: discord.Interaction):
+@bot.tree.command(name="report_help", description="Get information on how to report anonymously")
+async def report_help(interaction: discord.Interaction):
     """Provides information on how to report anonymously and get message IDs."""
     
     instructions = (
@@ -558,5 +573,62 @@ async def report_info(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
+
+@bot.command(name="remove_ua", description="Remove a user from the underage database.")
+@commands.has_permissions(administrator=True)  # Optional: restrict to admins
+async def remove_ua(ctx, user: discord.User):
+    """Remove a user from the underage_users database."""
+    connection = create_db_connection()
+    if connection is None:
+        await ctx.send("Failed to connect to the database.")
+        return
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM underage_users WHERE id = %s", (str(user.id),))
+        connection.commit()
+
+        if cursor.rowcount > 0:
+            await ctx.send(f"User {user.name} has been removed from the underage database.")
+        else:
+            await ctx.send(f"User {user.name} was not found in the underage database.")
+
+    except Error as e:
+        logging.error(f"Error removing user from underage database: {e}")
+        await ctx.send("An error occurred while trying to remove the user.")
+    finally:
+        cursor.close()
+        connection.close()
+
+@bot.tree.command(name="suggest", description="Submit a suggestion.")
+@app_commands.describe(
+    category="The category of your suggestion (Video or Discord)",
+    suggestion="Your suggestion"
+)
+async def suggest(interaction: discord.Interaction, category: str, *, suggestion: str):
+    """Submit a suggestion based on the selected category."""
+    
+    # Validate the category
+    if category.lower() not in ["video", "discord"]:
+        await interaction.response.send_message("Please choose a valid category: 'Video' or 'Discord'.", ephemeral=True)
+        return
+
+    # Create an embed for the suggestion
+    embed = discord.Embed(
+        title="New Suggestion",
+        color=discord.Color.green(),
+        timestamp=interaction.created_at
+    )
+    embed.add_field(name="Category", value=category.capitalize(), inline=False)
+    embed.add_field(name="Suggestion", value=suggestion, inline=False)
+    embed.set_footer(text=f"Suggested by {interaction.user.display_name}", icon_url=interaction.user.avatar.url)
+
+    # Send the embed to the specified suggestions channel
+    suggestions_channel = bot.get_channel(SUGGESTIONS_CHANNEL_ID)  # Use the loaded channel ID
+    if suggestions_channel:
+        await suggestions_channel.send(embed=embed)
+        await interaction.response.send_message("Thank you for your suggestion!", ephemeral=True)
+    else:
+        await interaction.response.send_message("Suggestion channel not found. Please contact an administrator.", ephemeral=True)
 
 bot.run(BOT_TOKEN)
